@@ -7,8 +7,6 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
-import java.io.Serializable;
-
 /**
  * Created by jason on 21/09/14.
  */
@@ -18,10 +16,11 @@ public class Database extends SQLiteOpenHelper {
     private static final String DB_NAME = "ma3map";
     private static final int DB_VERSION = 1;
 
-    private static final String TABLE_ROUTE = "route";
-    private static final String TABLE_LINE = "line";
-    private static final String TABLE_STOP = "stop";
-    private static final String TABLE_POINT = "point";
+    public static final String TABLE_ROUTE = "route";
+    public static final String TABLE_LINE = "line";
+    public static final String TABLE_STOP = "stop";
+    public static final String TABLE_POINT = "point";
+    public static final String TABLE_STOP_LINE = "stop_line";
 
     public Database(Context context){
         super(context, DB_NAME, null, DB_VERSION);
@@ -30,9 +29,10 @@ public class Database extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase sqLiteDatabase) {
         sqLiteDatabase.execSQL("CREATE TABLE "+TABLE_ROUTE+"(route_id text, route_short_name text, route_long_name text, route_desc text, route_type int, route_url text, route_color text, route_text_color text)");
-        sqLiteDatabase.execSQL("CREATE TABLE"+TABLE_STOP+"(stop_id text, stop_name text, stop_code text, stop_desc text, stop_lat text, stop_lon text, location_type int, parent_station text)");
-        sqLiteDatabase.execSQL("CREATE TABLE"+TABLE_LINE+"(line_id text, route_id text, direction_id int)");
-        sqLiteDatabase.execSQL("CREATE TABLE"+TABLE_POINT+"(line_id text, point_lat text, point_lon text, point_sequence int, dist_traveled int)");
+        sqLiteDatabase.execSQL("CREATE TABLE "+TABLE_STOP+"(stop_id text, stop_name text, stop_code text, stop_desc text, stop_lat text, stop_lon text, location_type int, parent_station text)");
+        sqLiteDatabase.execSQL("CREATE TABLE "+TABLE_LINE+"(line_id text, route_id text, direction_id int)");
+        sqLiteDatabase.execSQL("CREATE TABLE "+TABLE_POINT+"(line_id text, point_lat text, point_lon text, point_sequence int, dist_traveled int)");
+        sqLiteDatabase.execSQL("CREATE TABLE "+TABLE_STOP_LINE+"(line_id text, stop_id text)");
 
         Log.i(TAG, DB_NAME+" database with version"+DB_VERSION+" created");
     }
@@ -40,11 +40,12 @@ public class Database extends SQLiteOpenHelper {
     @Override
     public void onUpgrade(SQLiteDatabase sqLiteDatabase, int oldVersion, int newVersion) {
         sqLiteDatabase.execSQL("DROP TABLE IF EXISTS "+TABLE_ROUTE);
+        sqLiteDatabase.execSQL("DROP TABLE IF EXISTS "+TABLE_STOP_LINE);
         sqLiteDatabase.execSQL("DROP TABLE IF EXISTS "+TABLE_STOP);
         sqLiteDatabase.execSQL("DROP TABLE IF EXISTS "+TABLE_LINE);
         sqLiteDatabase.execSQL("DROP TABLE IF EXISTS "+TABLE_POINT);
 
-        Log.i(TAG, "Deleted all tables in "+DB_NAME+" database in preparation for the upgrade from version "+oldVersion+" to "+newVersion);
+        Log.w(TAG, "Deleted all tables in "+DB_NAME+" database in preparation for the upgrade from version "+oldVersion+" to "+newVersion);
         onCreate(sqLiteDatabase);
     }
 

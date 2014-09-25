@@ -1,7 +1,9 @@
 package ke.co.ma3map.android;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.location.Location;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
@@ -15,6 +17,8 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.model.LatLng;
+
+import ke.co.ma3map.android.handlers.Data;
 
 public class Map extends Activity implements GooglePlayServicesClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener{
 
@@ -40,6 +44,10 @@ public class Map extends Activity implements GooglePlayServicesClient.Connection
         googleMap.setMyLocationEnabled(true);
 
         locationClient = new LocationClient(this, this, this);
+
+        //initialize a thread to fetch the route data
+        RouteDataTask routeDataTask = new RouteDataTask();
+        routeDataTask.execute(0);
     }
 
     /**
@@ -96,5 +104,35 @@ public class Map extends Activity implements GooglePlayServicesClient.Connection
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
 
+    }
+
+    private class RouteDataTask extends AsyncTask<Integer, Integer, String>{
+
+        private ProgressDialog progressDialog;
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            progressDialog = ProgressDialog.show(Map.this, "", "Loading, please wait...", true);
+        }
+
+        @Override
+        protected void onProgressUpdate(Integer... values) {
+            super.onProgressUpdate(values[0]);
+            Log.i(TAG, "Progress people");
+        }
+
+        @Override
+        protected String doInBackground(Integer... integers) {
+            Log.i(TAG, "About to download route data from the server");
+            return Data.downloadAllRouteData(Map.this);
+        }
+
+        @Override
+        protected void onPostExecute(String response) {
+            super.onPostExecute(response);
+
+            progressDialog.dismiss();
+        }
     }
 }
