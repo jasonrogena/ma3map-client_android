@@ -106,7 +106,7 @@ public class Database extends SQLiteOpenHelper {
      * @param columnValues   The values of the reference column. All rows with these values will be deleted
      */
     public void runDeleteQuery(SQLiteDatabase db, String table, String referenceColumn, String[] columnValues) {
-        Log.d(TAG, "About to run delete query on "+table+" table");
+        //Log.d(TAG, "About to run delete query on "+table+" table");
 
         db.delete(table, referenceColumn+"=?", columnValues);
     }
@@ -121,7 +121,7 @@ public class Database extends SQLiteOpenHelper {
      * @param db    The writable database
      */
     public void runInsertQuery(String table,String[] columns,String[] values, int uniqueColumnIndex,SQLiteDatabase db) {
-        Log.d(TAG, "About to run insert query on "+table+" table");
+        //Log.d(TAG, "About to run insert query on "+table+" table");
         if(columns.length==values.length) {
             ContentValues cv=new ContentValues();
             int count=0;
@@ -132,7 +132,7 @@ public class Database extends SQLiteOpenHelper {
 
             //delete row with same unique key
             if(uniqueColumnIndex != -1){
-                Log.w(TAG, "About to delete any row with "+columns[uniqueColumnIndex]+" = "+values[uniqueColumnIndex]);
+                //Log.w(TAG, "About to delete any row with "+columns[uniqueColumnIndex]+" = "+values[uniqueColumnIndex]);
                 runDeleteQuery(db, table, columns[uniqueColumnIndex], new String[]{values[uniqueColumnIndex]});
             }
 

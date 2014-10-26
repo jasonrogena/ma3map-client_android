@@ -3,9 +3,9 @@ package ke.co.ma3map.android.carriers;
 import android.database.sqlite.SQLiteDatabase;
 
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import ke.co.ma3map.android.helpers.Database;
+import ke.co.ma3map.android.helpers.JSONObject;
 
 /**
  * Created by jason on 25/09/14.
@@ -18,16 +18,11 @@ public class Point {
     private int sequence;
     private int distTraveled;
 
-    public Point(JSONObject pointData){
-        try{
-            lat = pointData.getString("point_lat");
-            lon = pointData.getString("point_lon");
-            sequence = pointData.getInt("point_sequence");
-            distTraveled = pointData.getInt("dist_traveled");
-        }
-        catch (JSONException e){
-            e.printStackTrace();
-        }
+    public Point(JSONObject pointData) throws JSONException{
+        lat = pointData.getString("point_lat");
+        lon = pointData.getString("point_lon");
+        sequence = pointData.getInt("point_sequence");
+        distTraveled = pointData.getInt("dist_traveled");
     }
 
     public void insertIntoDB(Database database, SQLiteDatabase writableDB, String lineID){

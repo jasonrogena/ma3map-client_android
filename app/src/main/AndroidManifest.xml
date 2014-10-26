@@ -14,8 +14,6 @@
         android:glEsVersion="0x00020000"
         android:required="true" />
 
-
-
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
@@ -29,11 +27,13 @@
             android:name="com.google.android.maps.v2.API_KEY"
             android:value="@string/maps_api_key" />
 
+        <service android:name=".services.GetRouteData" />
+
         <activity
-            android:name=".Map"
+            android:name=".activities.Map"
             android:label="@string/app_name"
             android:windowSoftInputMode="stateHidden"
-            android:theme="@android:style/Theme.NoTitleBar"><!-- note: using noTitleBar instead of noTitleBar.Fullscreen because we want the use to see the network and gps status -->
+            android:theme="@style/AppTheme"><!-- note: using noTitleBar instead of noTitleBar.Fullscreen because we want the use to see the network and gps status -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

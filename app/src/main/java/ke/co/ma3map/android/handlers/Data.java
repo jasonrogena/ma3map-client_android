@@ -18,9 +18,7 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
-import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -34,6 +32,8 @@ import java.util.List;
 
 import ke.co.ma3map.android.carriers.Route;
 import ke.co.ma3map.android.helpers.Database;
+import ke.co.ma3map.android.helpers.JSONObject;
+import ke.co.ma3map.android.helpers.JSONArray;
 
 /**
  * Created by jason on 21/09/14.
@@ -47,6 +47,10 @@ public class Data {
     private static final String SERVER_URL = "http://ma3map.herokuapp.com";
     private static final int HTTP_POST_TIMEOUT = 20000;
     private static final int HTTP_RESPONSE_TIMEOUT = 200000;
+
+    public static final int FLAG_WORKING = 0;
+    public static final int FLAG_DONE = 1;
+    public static final int FLAG_ERROR = -1;
 
     private static final String URI_API_GET_ROUTES = "/get/routes";
     private static final String URI_API_SEARCH = "/search";
@@ -71,21 +75,16 @@ public class Data {
      * This method gets data from the server using a get request.
      * Make sure you call this method from a thread running asynchronously from the UI thread
      *
-     * @param context The activity/service from where you want to check for the connection
-     * @param uri     From where in the server you want to get the data from use the URI_* constants in this Class
-     * @param data    The data as a json object
+     * @param context           The activity/service from where you want to check for the connection
+     * @param uri               From where in the server you want to get the data from use the URI_* constants in this Class
+     * @param data              The data as a json object
+     * @param progressListener  The progressListener to be used to show progress
+     *
      * @return Returns a jsonObject with that looks like this {data, error, message}.
      * Error stores a boolean (True if an error occured). Message being present doesn't mean an error occurred
      */
-    public static JSONObject getDataFromServer(Context context, String uri, JSONObject data) {
-        JSONObject response = new JSONObject();
-        try {
-            response.put("message", "");
-            response.put("error", new Boolean(false));
-            response.put("data", new JSONArray());
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
+    public static JSONArray getDataFromServer(Context context, String uri, JSONObject data, ProgressListener progressListener) {
+        JSONArray serverData = new JSONArray();
 
         if (checkNetworkConnection(context)) {
             HttpParams httpParameters = new BasicHttpParams();
@@ -102,21 +101,22 @@ public class Data {
                     nameValuePairs.add(new BasicNameValuePair(key, data.getString(key)));
                 } catch (Exception e) {
                     e.printStackTrace();
-                    try {
-                        response.put("message", "Something when wrong while trying to encode the data before sending to the server");
-                        response.put("error", new Boolean(true));
-                    } catch (JSONException e1) {
-                        e1.printStackTrace();
-                    }
+                    progressListener.onProgress(0, 0, "Error occurred while trying to send data", FLAG_ERROR);
                 }
             }
 
             String dataString = URLEncodedUtils.format(nameValuePairs, "utf-8");
 
             Log.d(TAG, "Sending data to this url " + SERVER_URL + uri + dataString);
+
+            progressListener.onProgress(0, 0, "Getting route data from the server", FLAG_WORKING);//progress and end set to 0 because we currently dont have a way of measuring network transfers
+
+
             HttpGet httpGet = new HttpGet(SERVER_URL + uri + dataString);
             try {
                 HttpResponse httpResponse = httpClient.execute(httpGet);
+                progressListener.onProgress(0, 0, "Getting route data from the server", FLAG_WORKING);
+
                 if (httpResponse.getStatusLine().getStatusCode() == 200) {
                     Header[] headers = httpResponse.getAllHeaders();
                     for(int i =0; i < headers.length; i++){
@@ -125,62 +125,71 @@ public class Data {
 
                     HttpEntity httpEntity = httpResponse.getEntity();
                     if (httpEntity != null) {
+                        progressListener.onProgress(0, 0, "Decoding the route data", FLAG_WORKING);
                         InputStream inputStream = httpEntity.getContent();
                         String responseString = convertStreamToString(inputStream);
 
-                        JSONArray jsonArray = new JSONArray(responseString.trim());
-                        response.put("message", "Data gotten from the server");
-                        response.put("data", jsonArray);
+                        serverData = new JSONArray(responseString.trim());
+                        progressListener.onProgress(0, 0, "Decoding the route data", FLAG_WORKING);
                     }
                     else{
-                        response.put("message", "No data received from the server");
+                        progressListener.onProgress(0, 0, "The server gave us nothing", FLAG_DONE);
                     }
                 } else {
                     Log.e(TAG, "Status Code " + String.valueOf(httpResponse.getStatusLine().getStatusCode()) + " passed");
-                    response.put("message", "Server responded with the status code " + String.valueOf(httpResponse.getStatusLine().getStatusCode()));
-                    response.put("error", new Boolean(true));
+                    progressListener.onProgress(0, 0, "The server farted. Smells like "+String.valueOf(httpResponse.getStatusLine().getStatusCode()), FLAG_ERROR);
                 }
             } catch (JSONException e) {
                 e.printStackTrace();
-                try {
-                    response.put("message", "An error occurred while trying to convert the data received from the server");
-                    response.put("error", new Boolean(true));
-                } catch (JSONException e1) {
-                    e1.printStackTrace();
-                }
+                progressListener.onProgress(0, 0, "Could not decode the data received from the server", FLAG_ERROR);
             } catch (IOException e){
                 e.printStackTrace();
-                try {
-                    response.put("message", "An error occurred while trying to connect to the server");
-                    response.put("error", new Boolean(true));
-                } catch (JSONException e1) {
-                    e1.printStackTrace();
-                }
+                progressListener.onProgress(0, 0, "Could not connect to the server", FLAG_ERROR);
             }
         }
-        return response;
+        return serverData;
     }
 
-    private static List<Route> cacheMapData(Context context, JSONObject serverResponse){
+    /**
+     * This method caches the map data in the SQLite database
+     *
+     * @param context           The activity/service from where you want to check for the connection
+     * @param data              Response gotten from the server
+     * @param progressListener  The progressListener to be used to show progress
+     * @return
+     */
+    private static List<Route> cacheMapData(Context context, JSONArray data, ProgressListener progressListener){
         List<Route> routes = new ArrayList<Route>();
         try {
-            if(serverResponse.getBoolean("error") == false){
-                JSONArray data = serverResponse.getJSONArray("data");
-                Database database = new Database(context);
-                SQLiteDatabase writeableDB = database.getWritableDatabase();
+            Database database = new Database(context);
+            SQLiteDatabase writableDB = database.getWritableDatabase();
 
-                database.runTruncateQuery(writeableDB, Database.TABLE_POINT);
-                database.runTruncateQuery(writeableDB, Database.TABLE_STOP);
-                database.runTruncateQuery(writeableDB, Database.TABLE_LINE);
-                database.runTruncateQuery(writeableDB, Database.TABLE_ROUTE);
+            progressListener.onProgress(0, 0, "Clearing existing cache", FLAG_WORKING);
 
-                for(int routeIndex = 0; routeIndex < data.length(); routeIndex++){
-                    routes.add(new Route(data.getJSONObject(routeIndex)));
-                }
+            database.runTruncateQuery(writableDB, Database.TABLE_POINT);
+            database.runTruncateQuery(writableDB, Database.TABLE_STOP);
+            database.runTruncateQuery(writableDB, Database.TABLE_LINE);
+            database.runTruncateQuery(writableDB, Database.TABLE_ROUTE);
+
+            progressListener.onProgress(0, 0, "Clearing existing cache", FLAG_WORKING);
+
+            progressListener.onProgress(0, 100, "Caching the new route data", FLAG_WORKING);
+            for(int routeIndex = 0; routeIndex < data.length(); routeIndex++){
+                Route currRoute = new Route(data.getJSONObject(routeIndex));
+                currRoute.insertIntoDB(database, writableDB);
+                routes.add(currRoute);
+                float incIndex = (float)(routeIndex+1);
+                float dLength = (float)data.length();
+                float progress = ((incIndex/dLength) * 100f);
+                Log.d(TAG, "route index = "+String.valueOf(routeIndex+1));
+                Log.d(TAG, "length = "+String.valueOf(data.length()));
+                Log.d(TAG, "progress = "+String.valueOf(progress));
+                progressListener.onProgress(Math.round(progress), 100, "Caching the new route data", FLAG_WORKING);
             }
         }
         catch (JSONException e){
             e.printStackTrace();
+            progressListener.onProgress(0, 0, "Could not decode the data received", FLAG_ERROR);
         }
 
         return routes;
@@ -241,9 +250,24 @@ public class Data {
      *
      * @return
      */
-    public static List<Route> downloadAllRouteData(Context context){
+    public static List<Route> getAllRouteData(Context context, ProgressListener progressListener){
 
-        JSONObject serverResponse = getDataFromServer(context, URI_API_GET_ROUTES, new JSONObject());
-        return cacheMapData(context, serverResponse);
+        JSONArray serverResponse = getDataFromServer(context, URI_API_GET_ROUTES, new JSONObject(), progressListener);
+        List<Route> routes = cacheMapData(context, serverResponse, progressListener);
+        progressListener.onProgress(0, 0, "Done getting the data", FLAG_DONE);
+        return routes;
+    }
+
+    public interface ProgressListener {
+
+        /**
+         * This method is called when progress is made in whatever is being done
+         *
+         * @param progress  Number showing progress. Where one is complete
+         * @param end       Maximum number progress can get to
+         * @param message    String explaining what is currently happening
+         * @param flag      Flag showing the status of the action e.g working, done, error
+         */
+        public void onProgress(int progress, int end, String message, int flag);
     }
 }
