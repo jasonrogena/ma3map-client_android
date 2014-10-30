@@ -4,24 +4,27 @@ import android.app.IntentService;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 import ke.co.ma3map.android.R;
+import ke.co.ma3map.android.carriers.Route;
 import ke.co.ma3map.android.handlers.Data;
-import ke.co.ma3map.android.handlers.Preferences;
+import ke.co.ma3map.android.listeners.Progress;
 
 /**
  * Created by jason on 26/09/14.
  */
 public class GetRouteData extends IntentService
-                            implements Data.ProgressListener{
+                            implements Progress.ProgressListener{
 
     private static final String TAG = "GetRouteData";
     private final int NOTIFICATION_ID = 1;
 
     private NotificationManager notificationManager;
     private NotificationCompat.Builder builder;
+    private Progress progress;
 
     /**
      * Default constructor. Make sure this is there or Android will not be able
@@ -39,7 +42,13 @@ public class GetRouteData extends IntentService
                 .setContentTitle("Matatu route data")
                 .setSmallIcon(R.drawable.ic_launcher);
 
-        Data.getAllRouteData(this, this);
+        progress = (Progress)intent.getSerializableExtra(Progress.PARCELABLE_KEY);
+
+        Data data = new Data(this);
+        data.addProgressListener(this);
+        data.addProgressListener(progress.getProgressListener());
+        data.getAllRouteData(false, Route.PARCELABLE_KEY);
+
         Log.i(TAG, "********* Service finished *********");
     }
 
@@ -51,11 +60,13 @@ public class GetRouteData extends IntentService
 
         //TODO: change icon based on flag (working, done and error)
 
-        Preferences.setSharedPreference(this, Preferences.SP_GET_DATA_DONE, String.valueOf(done));
-        Preferences.setSharedPreference(this, Preferences.SP_GET_DATA_PROGRESS, String.valueOf(progress));
-        Preferences.setSharedPreference(this, Preferences.SP_GET_DATA_MESSAGE, message);
-        Preferences.setSharedPreference(this, Preferences.SP_GET_DATA_FLAG, String.valueOf(flag));
-
         notificationManager.notify(NOTIFICATION_ID, builder.build());
+    }
+
+    @Override
+    public void onDone(Bundle output, String message, int flag) {
+        Log.i(TAG, message + " " + String.valueOf(progress));
+        builder.setContentText(message)
+                .setProgress(0, 0, false);
     }
 }

@@ -2,12 +2,14 @@ package ke.co.ma3map.android.helpers;
 
 import org.json.JSONException;
 
+import java.io.Serializable;
+
 import ke.co.ma3map.android.helpers.JSONArray;
 
 /**
  * Created by jason on 26/09/14.
  */
-public class JSONObject extends org.json.JSONObject {
+public class JSONObject extends org.json.JSONObject implements Serializable {
     public JSONObject(String jsonString) throws JSONException {
         super(jsonString);
     }

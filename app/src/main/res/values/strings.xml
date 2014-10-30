@@ -5,11 +5,13 @@
     <string name="title_activity_map">ma3map</string>
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
-    <string name="maps_api_key">AIzaSyCs_yYkukGZJ79SBAH7NQEn-Ft89dMF_Us</string>
+    <string name="maps_api_key">AIzaSyBMaLDV5YIS7Ez4FIlWJ4AAqSfMVoqXNh0</string>
+    <string name="places_api_key">AIzaSyDxBpq06U5zoz_9ta81-ywENJgnXBbMvrk</string>
     <string name="warning_download_route_data">ma3map needs to download matatu route data from our servers. The route data is quite large (~10MB). Press Okay if you want to download this data now.</string>
     <string name="okay">OKAY</string>
     <string name="later">LATER</string>
     <string name="from">from</string>
     <string name="to">to</string>
     <string name="search">search</string>
+    <string name="loading..">Loading..</string>
 </resources>

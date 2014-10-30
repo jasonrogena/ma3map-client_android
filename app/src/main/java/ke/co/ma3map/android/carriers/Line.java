@@ -1,6 +1,8 @@
 package ke.co.ma3map.android.carriers;
 
 import android.database.sqlite.SQLiteDatabase;
+import android.os.Parcel;
+import android.os.Parcelable;
 
 import org.json.JSONException;
 
@@ -14,12 +16,27 @@ import ke.co.ma3map.android.helpers.JSONArray;
 /**
  * Created by jason on 21/09/14.
  */
-public class Line {
+public class Line implements Parcelable {
+
+    public static final String PARCELABLE_KEY = "Line";
 
     private String id;
     private int directionID;
     private List<Stop> stops;
     private List<Point> points;
+
+
+    public Line() {
+        id = null;
+        directionID = -1;
+        stops = null;
+        points = null;
+    }
+
+    public Line(Parcel source){
+        this();
+        readFromParcel(source);
+    }
 
     public Line(JSONObject lineData) throws JSONException{
         id = lineData.getString("line_id");
@@ -52,4 +69,41 @@ public class Line {
             points.get(pIndex).insertIntoDB(database, writableDB, id);
         }
     }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel parcel, int i) {
+        parcel.writeString(id);
+        parcel.writeInt(directionID);
+        parcel.writeTypedList(stops);
+        parcel.writeTypedList(points);
+    }
+
+    public void readFromParcel(Parcel in){
+        id = in.readString();
+        directionID = in.readInt();
+        in.readTypedList(stops, Stop.CREATOR);
+        in.readTypedList(points, Point.CREATOR);
+    }
+
+    /**
+     * This static object is to facilitate for other parcelable objects to carry a Line object
+     */
+    public static final Creator<Line> CREATOR=new Creator<Line>() {
+        @Override
+        public Line createFromParcel(Parcel source)
+        {
+            return new Line(source);
+        }
+
+        @Override
+        public Line[] newArray(int size)
+        {
+            return new Line[size];
+        }
+    };
 }

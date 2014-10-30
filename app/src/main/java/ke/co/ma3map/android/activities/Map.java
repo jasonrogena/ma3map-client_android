@@ -4,6 +4,7 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.location.Address;
@@ -11,11 +12,14 @@ import android.location.Geocoder;
 import android.location.Location;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
@@ -43,6 +47,10 @@ import java.util.List;
 import java.util.Locale;
 
 import ke.co.ma3map.android.R;
+import ke.co.ma3map.android.carriers.Commute;
+import ke.co.ma3map.android.carriers.Route;
+import ke.co.ma3map.android.handlers.Data;
+import ke.co.ma3map.android.listeners.Progress;
 import ke.co.ma3map.android.services.GetRouteData;
 
 public class Map extends Activity
@@ -81,6 +89,15 @@ public class Map extends Activity
     private Button toLocationB;
     private Marker fromMarker;
     private Marker toMarker;
+    private Button searchB;
+    private RoutePoint fromPoint;
+    private RoutePoint toPoint;
+    private SearchRoutesTasker searchRoutesTasker;
+    private PlacesSearchSuggestionTasker fromPlacesSuggestionTasker;
+    private PlacesSearchSuggestionTasker toPlacesSearchSuggestionTasker;
+    private Progress progress;//mechanism for communication with the GetRouteData service
+
+    private ArrayList<Route> routes;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,6 +125,23 @@ public class Map extends Activity
 
         fromACTV = (AutoCompleteTextView)this.findViewById(R.id.from_actv);
         fromACTV.setOnFocusChangeListener(this);
+        fromPlacesSuggestionTasker = new PlacesSearchSuggestionTasker(fromACTV);
+        fromACTV.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i2, int i3) {}
+            @Override
+            public void onTextChanged(CharSequence charSequence, int start, int before, int count) {
+                //if(count > 2){
+                fromPoint = new RoutePoint();
+                fromPoint.setSelectionMode(RoutePoint.MODE_TYPED);
+                fromPoint.setName(fromACTV.getText().toString());
+
+                fromPlacesSuggestionTasker.execute(fromPoint);
+                //}
+            }
+            @Override
+            public void afterTextChanged(Editable editable) {}
+        });
         //fromACTV.setOnClickListener(this);
         fromDropPinB = (Button)this.findViewById(R.id.from_drop_pin_b);
         fromDropPinB.setOnClickListener(this);
@@ -116,11 +150,30 @@ public class Map extends Activity
 
         toACTV = (AutoCompleteTextView)this.findViewById(R.id.to_actv);
         toACTV.setOnFocusChangeListener(this);
+        toPlacesSearchSuggestionTasker = new PlacesSearchSuggestionTasker(toACTV);
+        toACTV.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i2, int i3) {}
+            @Override
+            public void onTextChanged(CharSequence charSequence, int start, int before, int count) {
+                //if(count > 2){
+                toPoint = new RoutePoint();
+                toPoint.setSelectionMode(RoutePoint.MODE_TYPED);
+                toPoint.setName(toACTV.getText().toString());
+                toPlacesSearchSuggestionTasker.execute(toPoint);
+                //}
+            }
+            @Override
+            public void afterTextChanged(Editable editable) {}
+        });
         //toACTV.setOnClickListener(this);
         toDropPinB = (Button)this.findViewById(R.id.to_drop_pin_b);
         toDropPinB.setOnClickListener(this);
         toLocationB = (Button)this.findViewById(R.id.to_location_b);
         toLocationB.setOnClickListener(this);
+
+        searchB = (Button)findViewById(R.id.search_b);
+        searchB.setOnClickListener(this);
 
         navigateFAB = (FloatingActionButton)this.findViewById(R.id.navigate_fab);
         navigateFAB.setShadow(true);
@@ -143,7 +196,25 @@ public class Map extends Activity
         interactionLL.addView(phantomET);
 
         //ask user for permission to get route data
+        progress = new Progress(new Progress.ProgressListener() {
+            @Override
+            public void onProgress(int progress, int end, String message, int flag) {
+                Toast.makeText(Map.this, message, Toast.LENGTH_LONG).show();
+            }
+
+            @Override
+            public void onDone(Bundle output, String message, int flag) {
+                Toast.makeText(Map.this, message, Toast.LENGTH_LONG).show();
+
+                routes = output.getParcelableArrayList(Route.PARCELABLE_KEY);
+            }
+        });
         getRouteData();
+
+        /*PlacesSearchSuggestionTasker fromPlacesSuggestions = new PlacesSearchSuggestionTasker(fromACTV);
+        fromPlacesSuggestions.execute(0);
+        PlacesSearchSuggestionTasker toPlacesSuggestions = new PlacesSearchSuggestionTasker(toACTV);
+        toPlacesSuggestions.execute(0);*/
     }
 
     /**
@@ -207,37 +278,6 @@ public class Map extends Activity
      * that gets the route data
      */
     private void getRouteData(){
-
-        /*final Dialog dialog = new Dialog(Map.this, android.R.style.Theme_Translucent_NoTitleBar);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(R.layout.dialog);
-
-        TextView dialogTitle = (TextView)dialog.findViewById(R.id.title);
-        dialogTitle.setText("Matatu Route Data");
-        TextView dialogBody = (TextView)dialog.findViewById(R.id.body);
-        dialogBody.setText(R.string.warning_download_route_data);
-
-        Button positive = (Button)dialog.findViewById(R.id.positive_button);
-        positive.setText(R.string.okay);
-        positive.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent=new Intent(Map.this, GetRouteData.class);
-                Map.this.startService(intent);
-                dialog.dismiss();
-            }
-        });
-
-        Button negative = (Button)dialog.findViewById(R.id.negative_button);
-        negative.setText(R.string.later);
-        negative.setOnClickListener(new View.OnClickListener(){
-            @Override
-            public void onClick(View view) {
-                dialog.dismiss();
-            }
-        });
-
-        dialog.show();*/
         AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
         dialogBuilder.setTitle("Matatu Route Data");
         dialogBuilder.setMessage(R.string.warning_download_route_data);
@@ -245,7 +285,8 @@ public class Map extends Activity
         dialogBuilder.setPositiveButton(R.string.okay, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
-                Intent intent=new Intent(Map.this, GetRouteData.class);
+                Intent intent = new Intent(Map.this, GetRouteData.class);
+                intent.putExtra(Progress.PARCELABLE_KEY, progress);
                 Map.this.startService(intent);
                 dialogInterface.dismiss();
             }
@@ -276,7 +317,9 @@ public class Map extends Activity
         else if(view == fromLocationB){
             Location myLocation = locationClient.getLastLocation();
             if(myLocation != null){
-                fromACTV.setText(getLocationName(new LatLng(myLocation.getLatitude(), myLocation.getLongitude())));
+                String name = getLocationName(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()));
+                fromPoint = new RoutePoint(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), name, RoutePoint.MODE_CURR_LOC);
+                fromACTV.setText(fromPoint.getName());
             }
         }
         else if(view == toDropPinB){
@@ -286,11 +329,18 @@ public class Map extends Activity
         else if(view == toLocationB){
             Location myLocation = locationClient.getLastLocation();
             if(myLocation != null){
-                toACTV.setText(getLocationName(new LatLng(myLocation.getLatitude(), myLocation.getLongitude())));
+                String name = getLocationName(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()));
+                toPoint = new RoutePoint(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), name, RoutePoint.MODE_CURR_LOC);
+                toACTV.setText(toPoint.getName());
             }
         }
         else if(view == interactionLL || view == fromACTV || view == toACTV){
             if(mode == MODE_DROP_PIN) expandInteractionLayout();
+        }
+        else if(view == searchB){
+            toPoint.setName(toACTV.getText().toString());
+
+            searchRoutesTasker.execute();
         }
     }
 
@@ -367,19 +417,23 @@ public class Map extends Activity
         String locationName = getLocationName(latLng);
         float hue = 0f;
         if(pin == PIN_FROM) {
+            fromPoint = new RoutePoint(latLng, locationName, RoutePoint.MODE_DROP_PIN);
+
             hue = BitmapDescriptorFactory.HUE_RED;
             if(fromMarker != null) fromMarker.remove();
             fromMarker = googleMap.addMarker(new MarkerOptions()
                     .position(latLng)
-                    .title(getResources().getString(R.string.from) + " " + locationName)
+                    .title(getResources().getString(R.string.from) + " " + fromPoint.getName())
                     .icon(BitmapDescriptorFactory.defaultMarker(hue)));
         }
         else if(pin == PIN_TO) {
+            toPoint = new RoutePoint(latLng, locationName, RoutePoint.MODE_DROP_PIN);
+
             hue = BitmapDescriptorFactory.HUE_GREEN;
             if(toMarker != null)toMarker.remove();
             toMarker = googleMap.addMarker(new MarkerOptions()
                     .position(latLng)
-                    .title(getResources().getString(R.string.to) + " " + locationName)
+                    .title(getResources().getString(R.string.to) + " " + toPoint)
                     .icon(BitmapDescriptorFactory.defaultMarker(hue)));
         }
 
@@ -426,13 +480,23 @@ public class Map extends Activity
         return null;
     }
 
-    private class SearchSuggestionTasker extends AsyncTask<String, Integer, List<String>>{
+    private class PlacesSearchSuggestionTasker extends AsyncTask<RoutePoint, Integer, List<String>>{
+
+        RoutePoint routePoint;
+        AutoCompleteTextView actv;
+
+        public PlacesSearchSuggestionTasker(AutoCompleteTextView actv){
+            this.routePoint = null;
+            this.actv = actv;
+        }
 
         @Override
-        protected List<String> doInBackground(String... strings) {
+        protected List<String> doInBackground(RoutePoint... routePoints) {
+            routePoint = routePoints[0];
+
             List<String> names = new ArrayList<String>();
-            String typed = strings[0];
-            try {
+            String typed = routePoint.getName();
+            /*try {
                 List<Address> addresses = new Geocoder(Map.this).getFromLocationName(typed, 10, -1.501543, 36.196317, -0.620050, 37.451505);//kajiado to kirinyaga
 
                 for(int index = 0; index < addresses.size(); index++){
@@ -442,13 +506,149 @@ public class Map extends Activity
                 }
             } catch (IOException e) {
                 e.printStackTrace();
+            }*/
+
+            List<String[]> suggestions = Data.getPlaceSuggestions(Map.this, typed);
+
+            List<String> suggestionNames = new ArrayList<String>();
+            for(int i = 0; i < suggestions.size(); i++){
+                suggestionNames.add(suggestions.get(i)[1]);
             }
-            return names;
+
+            //set the first suggestion as the current location
+            if(suggestions.size() > 0){
+                Log.d(TAG, "most relevant placeID is "+suggestions.get(0)[0]);
+                routePoint.setPlaceID(suggestions.get(0)[0]);//assuming here the first item in the array is the most relevant
+            }
+
+            return suggestionNames;
         }
 
         @Override
-        protected void onPostExecute(List<String> strings) {
-            super.onPostExecute(strings);
+        protected void onPostExecute(List<String> places) {
+            super.onPostExecute(places);
+
+            ArrayAdapter<String> placesAA = new ArrayAdapter<String>(Map.this, android.R.layout.simple_list_item_1, places);
+            actv.setAdapter(placesAA);
         }
+    }
+
+    public class SearchRoutesTasker extends AsyncTask<Integer, Integer, List<Commute>>{
+
+        ProgressDialog progressDialog;
+        RoutePoint from;
+        RoutePoint to;
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+
+            from = fromPoint;
+            to = toPoint;
+
+            progressDialog = ProgressDialog.show(Map.this, null, null, true, true, new DialogInterface.OnCancelListener() {
+                @Override
+                public void onCancel(DialogInterface dialogInterface) {
+                    SearchRoutesTasker.this.cancel(true);
+                }
+            });
+        }
+
+        @Override
+        protected List<Commute> doInBackground(Integer... integers) {
+            if(to.getName().length() > 0 && from.getName().length() > 0){
+                //1. check if LatLng for to and from set and set if not
+                if(to.getSelectionMode() == RoutePoint.MODE_TYPED && to.getLatLng() == null){
+
+                }
+                else {
+                    Log.e(TAG, "To point set using either drop pin or current position but LatLng not set");
+                    return null;
+                }
+
+                if(from.getSelectionMode() == RoutePoint.MODE_TYPED && from.getLatLng() == null){
+
+                }
+                else {
+                    Log.e(TAG, "From point set using either drop pin or current position but LatLng not set");
+                    return null;
+                }
+
+                //2. get cached route data
+
+                //3. get closest stops
+
+                //4. determine commutes using closest stops
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(List<Commute> commutes) {
+            super.onPostExecute(commutes);
+
+            progressDialog.dismiss();
+        }
+    }
+
+    /**
+     * This data carrier class is meant to store data on the end points for a transit i.e origin and destination
+     */
+    private class RoutePoint {
+
+        public static final int MODE_CURR_LOC = 0;
+        public static final int MODE_DROP_PIN = 1;
+        public static final int MODE_TYPED = 2;
+
+        private LatLng latLng;
+        private String name;
+        private int selectionMode;
+        private String placeID;
+
+        public RoutePoint(){
+            latLng = null;
+            name = "";
+            selectionMode = -1;
+            placeID = null;
+        }
+
+        public RoutePoint(LatLng latLng, String name, int selectionMode){
+            this.latLng = latLng;
+            this.name = name;
+            this.selectionMode = selectionMode;
+        }
+
+        public LatLng getLatLng() {
+            return latLng;
+        }
+
+        public void setLatLng(LatLng latLng) {
+            this.latLng = latLng;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public int getSelectionMode() {
+            return selectionMode;
+        }
+
+        public void setSelectionMode(int selectionMode) {
+            this.selectionMode = selectionMode;
+        }
+
+        public String getPlaceID(){
+            return placeID;
+        }
+
+        public void setPlaceID(String placeID){
+            this.placeID = placeID;
+        }
+
     }
 }

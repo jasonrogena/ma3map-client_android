@@ -1,6 +1,8 @@
 package ke.co.ma3map.android.carriers;
 
 import android.database.sqlite.SQLiteDatabase;
+import android.os.Parcel;
+import android.os.Parcelable;
 
 import org.json.JSONException;
 
@@ -10,13 +12,26 @@ import ke.co.ma3map.android.helpers.JSONObject;
 /**
  * Created by jason on 25/09/14.
  */
-public class Point {
+public class Point implements Parcelable{
     //point_lat text, point_lon text, point_sequence int, dist_traveled int
+    public static final String PARCELABLE_KEY = "Point";
 
     private String lat;
     private String lon;
     private int sequence;
     private int distTraveled;
+
+    public Point(Parcel source) {
+        this();
+        readFromParcel(source);
+    }
+
+    public Point() {
+        lat = null;
+        lon = null;
+        sequence = -1;
+        distTraveled = -1;
+    }
 
     public Point(JSONObject pointData) throws JSONException{
         lat = pointData.getString("point_lat");
@@ -31,4 +46,41 @@ public class Point {
 
         database.runInsertQuery(Database.TABLE_POINT, columns, values, -1, writableDB);
     }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel parcel, int flags) {
+        parcel.writeString(lat);
+        parcel.writeString(lon);
+        parcel.writeInt(distTraveled);
+        parcel.writeInt(sequence);
+    }
+
+    public void readFromParcel(Parcel in) {
+        lat = in.readString();
+        lon = in.readString();
+        distTraveled = in.readInt();
+        sequence = in.readInt();
+    }
+
+    /**
+     * This static object is to facilitate for other parcelable objects to carry a point object
+     */
+    public static final Creator<Point> CREATOR=new Creator<Point>() {
+        @Override
+        public Point createFromParcel(Parcel source)
+        {
+            return new Point(source);
+        }
+
+        @Override
+        public Point[] newArray(int size)
+        {
+            return new Point[size];
+        }
+    };
 }
