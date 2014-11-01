@@ -9,7 +9,7 @@ Server-side code for the project resides [here](https://github.com/jasonrogena/m
 
 The android client was made using [Android Studio](https://developer.android.com/sdk/installing/studio.html) and the [Gradle Build System](http://www.gradle.org/).
 
-### Building the project
+### Building the Project
 
 #### Environment
 
@@ -55,7 +55,7 @@ Since this app uses API's that need it to be signed, we recommend you install th
     adb install -r app/build/outputs/apk/app-release.apk
 
 
-### External APIs used
+### External APIs Used
 
 The app needs access to several external APIs:
 
