@@ -5,13 +5,21 @@ import android.animation.ObjectAnimator;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.os.Messenger;
+import android.os.Parcel;
+import android.support.v4.content.LocalBroadcastManager;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -42,6 +50,7 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.melnykov.fab.FloatingActionButton;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -50,7 +59,6 @@ import ke.co.ma3map.android.R;
 import ke.co.ma3map.android.carriers.Commute;
 import ke.co.ma3map.android.carriers.Route;
 import ke.co.ma3map.android.handlers.Data;
-import ke.co.ma3map.android.listeners.Progress;
 import ke.co.ma3map.android.services.GetRouteData;
 
 public class Map extends Activity
@@ -58,7 +66,7 @@ public class Map extends Activity
                             GoogleApiClient.OnConnectionFailedListener,
                             View.OnClickListener,
                             GoogleMap.OnMapClickListener,
-                            View.OnFocusChangeListener{
+                            View.OnFocusChangeListener, Serializable{
 
     private final String TAG = "Map";
 
@@ -95,9 +103,9 @@ public class Map extends Activity
     private SearchRoutesTasker searchRoutesTasker;
     private PlacesSearchSuggestionTasker fromPlacesSuggestionTasker;
     private PlacesSearchSuggestionTasker toPlacesSearchSuggestionTasker;
-    private Progress progress;//mechanism for communication with the GetRouteData service
 
     private ArrayList<Route> routes;
+    private BroadcastReceiver routeDataBroadcastReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -196,25 +204,20 @@ public class Map extends Activity
         interactionLL.addView(phantomET);
 
         //ask user for permission to get route data
-        progress = new Progress(new Progress.ProgressListener() {
-            @Override
-            public void onProgress(int progress, int end, String message, int flag) {
-                Toast.makeText(Map.this, message, Toast.LENGTH_LONG).show();
-            }
-
-            @Override
-            public void onDone(Bundle output, String message, int flag) {
-                Toast.makeText(Map.this, message, Toast.LENGTH_LONG).show();
-
-                routes = output.getParcelableArrayList(Route.PARCELABLE_KEY);
-            }
-        });
         getRouteData();
 
         /*PlacesSearchSuggestionTasker fromPlacesSuggestions = new PlacesSearchSuggestionTasker(fromACTV);
         fromPlacesSuggestions.execute(0);
         PlacesSearchSuggestionTasker toPlacesSuggestions = new PlacesSearchSuggestionTasker(toACTV);
         toPlacesSuggestions.execute(0);*/
+
+        routeDataBroadcastReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                Toast.makeText(Map.this, "Route data gotten", Toast.LENGTH_LONG).show();
+                routes = intent.getParcelableArrayListExtra(Route.PARCELABLE_KEY);
+            }
+        };
     }
 
     /**
@@ -228,6 +231,10 @@ public class Map extends Activity
         if(!locationClient.isConnected()){
             locationClient.connect();
         }
+
+        //register broadcast receivers
+        LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
+        localBroadcastManager.registerReceiver(routeDataBroadcastReceiver, new IntentFilter(GetRouteData.ACTION_GET_ROUTE_DATA));
     }
 
     /**
@@ -239,6 +246,10 @@ public class Map extends Activity
         super.onPause();
 
         locationClient.disconnect();
+
+        //unregister broadcast receivers
+        LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
+        localBroadcastManager.unregisterReceiver(routeDataBroadcastReceiver);
     }
 
     /**
@@ -285,10 +296,9 @@ public class Map extends Activity
         dialogBuilder.setPositiveButton(R.string.okay, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
-                Intent intent = new Intent(Map.this, GetRouteData.class);
-                intent.putExtra(Progress.PARCELABLE_KEY, progress);
-                Map.this.startService(intent);
                 dialogInterface.dismiss();
+                Intent intent = new Intent(Map.this, GetRouteData.class);
+                Map.this.startService(intent);
             }
         });
         dialogBuilder.setNegativeButton(R.string.later, new DialogInterface.OnClickListener() {

@@ -41,7 +41,7 @@ import ke.co.ma3map.android.carriers.Route;
 import ke.co.ma3map.android.helpers.Database;
 import ke.co.ma3map.android.helpers.JSONObject;
 import ke.co.ma3map.android.helpers.JSONArray;
-import ke.co.ma3map.android.listeners.Progress;
+import ke.co.ma3map.android.listeners.ProgressListener;
 
 /**
  * Created by jason on 21/09/14.
@@ -60,15 +60,15 @@ public class Data {
     private static final String URI_API_GET_ROUTES = "/get/routes";
     private static final String URI_API_SEARCH = "/search";
 
-    private List<Progress.ProgressListener> progressListeners;
+    private List<ProgressListener> progressListeners;
     private final Context context;
 
     public Data(Context context) {
         this.context = context;
-        progressListeners = new ArrayList<Progress.ProgressListener>();
+        progressListeners = new ArrayList<ProgressListener>();
     }
 
-    public void addProgressListener(Progress.ProgressListener progressListener){
+    public void addProgressListener(ProgressListener progressListener){
         progressListeners.add(progressListener);
     }
 
@@ -115,7 +115,7 @@ public class Data {
     public JSONArray getDataFromServer(String uri, JSONObject data, boolean willProgressContinue, String bundleKey) {
         JSONArray serverData = new JSONArray();
 
-        int finalFlag = Progress.FLAG_ERROR;//assuming something bad will happen until final exit code changes this to something else
+        int finalFlag = ProgressListener.FLAG_ERROR;//assuming something bad will happen until final exit code changes this to something else
 
         if (checkNetworkConnection(context)) {
             HttpParams httpParameters = new BasicHttpParams();
@@ -132,7 +132,7 @@ public class Data {
                     nameValuePairs.add(new BasicNameValuePair(key, data.getString(key)));
                 } catch (Exception e) {
                     e.printStackTrace();
-                    updateProgressListeners(0, 0, "Error occurred while trying to send data", Progress.FLAG_ERROR);
+                    updateProgressListeners(0, 0, "Error occurred while trying to send data", ProgressListener.FLAG_ERROR);
                 }
             }
 
@@ -140,13 +140,13 @@ public class Data {
 
             Log.d(TAG, "Sending data to this url " + SERVER_URL + uri + dataString);
 
-            updateProgressListeners(0, 0, "Getting data from the server", Progress.FLAG_WORKING);//progress and end set to 0 because we currently dont have a way of measuring network transfers
+            updateProgressListeners(0, 0, "Getting data from the server", ProgressListener.FLAG_WORKING);//progress and end set to 0 because we currently dont have a way of measuring network transfers
 
 
             HttpGet httpGet = new HttpGet(SERVER_URL + uri + dataString);
             try {
                 HttpResponse httpResponse = httpClient.execute(httpGet);
-                updateProgressListeners(0, 0, "Getting data from the server", Progress.FLAG_WORKING);
+                updateProgressListeners(0, 0, "Getting data from the server", ProgressListener.FLAG_WORKING);
 
                 if (httpResponse.getStatusLine().getStatusCode() == 200) {
                     Header[] headers = httpResponse.getAllHeaders();
@@ -156,27 +156,27 @@ public class Data {
 
                     HttpEntity httpEntity = httpResponse.getEntity();
                     if (httpEntity != null) {
-                        updateProgressListeners(0, 0, "Decoding the data", Progress.FLAG_WORKING);
+                        updateProgressListeners(0, 0, "Decoding the data", ProgressListener.FLAG_WORKING);
                         InputStream inputStream = httpEntity.getContent();
                         String responseString = convertStreamToString(inputStream);
 
                         serverData = new JSONArray(responseString.trim());
-                        updateProgressListeners(0, 0, "Decoding the data", Progress.FLAG_WORKING);
-                        finalFlag = Progress.FLAG_DONE;
+                        updateProgressListeners(0, 0, "Decoding the data", ProgressListener.FLAG_WORKING);
+                        finalFlag = ProgressListener.FLAG_DONE;
                     }
                     else{
-                        updateProgressListeners(0, 0, "The server gave us nothing", Progress.FLAG_DONE);
+                        updateProgressListeners(0, 0, "The server gave us nothing", ProgressListener.FLAG_DONE);
                     }
                 } else {
                     Log.e(TAG, "Status Code " + String.valueOf(httpResponse.getStatusLine().getStatusCode()) + " passed");
-                    updateProgressListeners(0, 0, "The server farted. Smells like "+String.valueOf(httpResponse.getStatusLine().getStatusCode()), Progress.FLAG_ERROR);
+                    updateProgressListeners(0, 0, "The server farted. Smells like "+String.valueOf(httpResponse.getStatusLine().getStatusCode()), ProgressListener.FLAG_ERROR);
                 }
             } catch (JSONException e) {
                 e.printStackTrace();
-                updateProgressListeners(0, 0, "Could not decode the data received from the server", Progress.FLAG_ERROR);
+                updateProgressListeners(0, 0, "Could not decode the data received from the server", ProgressListener.FLAG_ERROR);
             } catch (IOException e){
                 e.printStackTrace();
-                updateProgressListeners(0, 0, "Could not connect to the server", Progress.FLAG_ERROR);
+                updateProgressListeners(0, 0, "Could not connect to the server", ProgressListener.FLAG_ERROR);
             }
         }
 
@@ -198,23 +198,23 @@ public class Data {
      * @return
      */
     private ArrayList<Route> cacheMapData(JSONArray data, boolean willProgressContinue, String bundleKey){
-        int finalFlag = Progress.FLAG_ERROR;
+        int finalFlag = ProgressListener.FLAG_ERROR;
 
         ArrayList<Route> routes = new ArrayList<Route>();
         try {
             Database database = new Database(context);
             SQLiteDatabase writableDB = database.getWritableDatabase();
 
-            updateProgressListeners(0, 0, "Clearing existing cache", Progress.FLAG_WORKING);
+            updateProgressListeners(0, 0, "Clearing existing cache", ProgressListener.FLAG_WORKING);
 
             database.runTruncateQuery(writableDB, Database.TABLE_POINT);
             database.runTruncateQuery(writableDB, Database.TABLE_STOP);
             database.runTruncateQuery(writableDB, Database.TABLE_LINE);
             database.runTruncateQuery(writableDB, Database.TABLE_ROUTE);
 
-            updateProgressListeners(0, 0, "Clearing existing cache", Progress.FLAG_WORKING);
+            updateProgressListeners(0, 0, "Clearing existing cache", ProgressListener.FLAG_WORKING);
 
-            updateProgressListeners(0, 100, "Caching the new route data", Progress.FLAG_WORKING);
+            updateProgressListeners(0, 100, "Caching the new route data", ProgressListener.FLAG_WORKING);
             for(int routeIndex = 0; routeIndex < data.length(); routeIndex++){
                 Route currRoute = new Route(data.getJSONObject(routeIndex));
                 currRoute.insertIntoDB(database, writableDB);
@@ -225,13 +225,13 @@ public class Data {
                 Log.d(TAG, "route index = "+String.valueOf(routeIndex+1));
                 Log.d(TAG, "length = "+String.valueOf(data.length()));
                 Log.d(TAG, "progress = "+String.valueOf(progress));
-                updateProgressListeners(Math.round(progress), 100, "Caching the new route data", Progress.FLAG_WORKING);
+                updateProgressListeners(Math.round(progress), 100, "Caching the new route data", ProgressListener.FLAG_WORKING);
             }
-            finalFlag = Progress.FLAG_DONE;
+            finalFlag = ProgressListener.FLAG_DONE;
         }
         catch (JSONException e){
             e.printStackTrace();
-            updateProgressListeners(0, 0, "Could not decode the data received", Progress.FLAG_ERROR);
+            updateProgressListeners(0, 0, "Could not decode the data received", ProgressListener.FLAG_ERROR);
         }
 
         if(willProgressContinue == false){
@@ -308,10 +308,10 @@ public class Data {
         if(willProgressContinue == false){
             Bundle output = new Bundle();
             output.putParcelableArrayList(Route.PARCELABLE_KEY, routes);
-            finalizeProgressListeners(output, "Done getting the data", Progress.FLAG_DONE);
+            finalizeProgressListeners(output, "Done getting the data", ProgressListener.FLAG_DONE);
         }
         else {
-            updateProgressListeners(0, 0, "Done getting the data", Progress.FLAG_DONE);
+            updateProgressListeners(0, 0, "Done getting the data", ProgressListener.FLAG_DONE);
         }
 
         return routes;
