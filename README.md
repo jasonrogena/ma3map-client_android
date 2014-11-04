@@ -2,7 +2,7 @@
 
 This is my attempt in putting [Nairobi matatu transit route data](http://www.gtfs-data-exchange.com/agency/university-of-nairobi-c4dlab/) by [Digital Matatus](http://www.digitalmatatus.com/) to good use.
 
-Server-side code for the project resides [here](https://github.com/jasonrogena/ma3map-server) 
+Server-side code for the project resides [here](https://github.com/jasonrogena/ma3map-server).
 
 
 ## Android Client
@@ -18,7 +18,7 @@ You need to sign the app for it to be allowed to use some of the external APIs i
     cd ~/.android
     keytool -genkey -v -keystore release.keystore -alias androidreleasekey -keyalg RSA -keysize 2048 -validity 10000
 
-You can show the release key's SHA1 fingerprint by running
+You can show the release key's SHA1 fingerprint by running:
 
     cd ~/.android
     keytool -v -list -keystore release.keystore
@@ -61,13 +61,13 @@ The app needs access to several external APIs:
 
 #### 1. Google Maps Android API v2
 
-You'll need to get an API key from [Google's Developer Console](https://console.developers.google.com). Set the API key as *maps_api_key* in app/src/main/res/values/strings.xml
+You'll need to get an API key from [Google's Developer Console](https://console.developers.google.com). Set the API key as *maps_api_key* in app/src/main/res/values/strings.xml.
 
 Note that Google will need your release key's SHA1 fingerprint for them to give you an API key.
 
 
 #### 2. Google Places API
 
-You'll need to get an API key from [Google's Developer Console](https://console.developers.google.com). Set the API key as *places_api_key* in app/src/main/res/values/strings.xml 
+You'll need to get an API key from [Google's Developer Console](https://console.developers.google.com). Set the API key as *places_api_key* in app/src/main/res/values/strings.xml. 
 
 Google doesn't need your release key's SHA1 fingerprint. Use the Public API access key for this.
