@@ -70,6 +70,17 @@ public class Line implements Parcelable {
         }
     }
 
+    /**
+     * This method unloads (from memory) all the points in this line. As a way of reducing the object's size.
+     * Stops are not unloaded
+     */
+    public void unloadPoints() {
+        if(this.points!= null){
+            this.points.clear();
+            this.points = null;
+        }
+    }
+
     @Override
     public int describeContents() {
         return 0;

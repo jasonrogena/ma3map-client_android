@@ -81,6 +81,12 @@ public class GetRouteData extends IntentService
         LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
         Intent intent = new Intent();
         intent.setAction(ACTION_GET_ROUTE_DATA);
+
+        //reduce this sizes of the route objects by unloading stops
+        for(int i =0; i < allRouteData.size(); i++){
+            allRouteData.get(i).unloadPoints();
+        }
+
         intent.putParcelableArrayListExtra(Route.PARCELABLE_KEY, allRouteData);
         localBroadcastManager.sendBroadcast(intent);
     }

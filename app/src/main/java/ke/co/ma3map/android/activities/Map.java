@@ -92,12 +92,12 @@ public class Map extends Activity
     private FloatingActionButton navigateFAB;
     private EditText phantomET;
     private Button fromDropPinB;
-    private Button fromLocationB;
+    //private Button fromLocationB;
     private Button toDropPinB;
-    private Button toLocationB;
+    //private Button toLocationB;
     private Marker fromMarker;
     private Marker toMarker;
-    private Button searchB;
+    //private Button searchB;
     private RoutePoint fromPoint;
     private RoutePoint toPoint;
     private SearchRoutesTasker searchRoutesTasker;
@@ -132,6 +132,7 @@ public class Map extends Activity
         routeSelectionRL = (RelativeLayout)this.findViewById(R.id.route_selection_rl);
 
         fromACTV = (AutoCompleteTextView)this.findViewById(R.id.from_actv);
+        fromACTV.setOnClickListener(this);
         fromACTV.setOnFocusChangeListener(this);
         fromPlacesSuggestionTasker = new PlacesSearchSuggestionTasker(fromACTV);
         fromACTV.addTextChangedListener(new TextWatcher() {
@@ -139,13 +140,16 @@ public class Map extends Activity
             public void beforeTextChanged(CharSequence charSequence, int i, int i2, int i3) {}
             @Override
             public void onTextChanged(CharSequence charSequence, int start, int before, int count) {
-                //if(count > 2){
-                fromPoint = new RoutePoint();
-                fromPoint.setSelectionMode(RoutePoint.MODE_TYPED);
-                fromPoint.setName(fromACTV.getText().toString());
+                if(fromACTV.getText().toString().length() >= 2){
+                    fromPoint = new RoutePoint();
+                    fromPoint.setSelectionMode(RoutePoint.MODE_TYPED);
+                    fromPoint.setName(fromACTV.getText().toString());
 
-                fromPlacesSuggestionTasker.execute(fromPoint);
-                //}
+                    if(fromPlacesSuggestionTasker.isRunning() == false){
+                        fromPlacesSuggestionTasker = new PlacesSearchSuggestionTasker(fromACTV);//reinitialize the asynctaks. You can only run an asynctask once
+                        fromPlacesSuggestionTasker.execute(fromPoint);
+                    }
+                }
             }
             @Override
             public void afterTextChanged(Editable editable) {}
@@ -153,10 +157,11 @@ public class Map extends Activity
         //fromACTV.setOnClickListener(this);
         fromDropPinB = (Button)this.findViewById(R.id.from_drop_pin_b);
         fromDropPinB.setOnClickListener(this);
-        fromLocationB = (Button)this.findViewById(R.id.from_location_b);
-        fromLocationB.setOnClickListener(this);
+        /*fromLocationB = (Button)this.findViewById(R.id.from_location_b);
+        fromLocationB.setOnClickListener(this);*/
 
         toACTV = (AutoCompleteTextView)this.findViewById(R.id.to_actv);
+        toACTV.setOnClickListener(this);
         toACTV.setOnFocusChangeListener(this);
         toPlacesSearchSuggestionTasker = new PlacesSearchSuggestionTasker(toACTV);
         toACTV.addTextChangedListener(new TextWatcher() {
@@ -164,12 +169,16 @@ public class Map extends Activity
             public void beforeTextChanged(CharSequence charSequence, int i, int i2, int i3) {}
             @Override
             public void onTextChanged(CharSequence charSequence, int start, int before, int count) {
-                //if(count > 2){
-                toPoint = new RoutePoint();
-                toPoint.setSelectionMode(RoutePoint.MODE_TYPED);
-                toPoint.setName(toACTV.getText().toString());
-                toPlacesSearchSuggestionTasker.execute(toPoint);
-                //}
+                if(toACTV.getText().toString().length() >= 2){
+                    toPoint = new RoutePoint();
+                    toPoint.setSelectionMode(RoutePoint.MODE_TYPED);
+                    toPoint.setName(toACTV.getText().toString());
+
+                    if(toPlacesSearchSuggestionTasker.isRunning() == false) {
+                        toPlacesSearchSuggestionTasker = new PlacesSearchSuggestionTasker(toACTV);
+                        toPlacesSearchSuggestionTasker.execute(toPoint);
+                    }
+                }
             }
             @Override
             public void afterTextChanged(Editable editable) {}
@@ -177,16 +186,16 @@ public class Map extends Activity
         //toACTV.setOnClickListener(this);
         toDropPinB = (Button)this.findViewById(R.id.to_drop_pin_b);
         toDropPinB.setOnClickListener(this);
-        toLocationB = (Button)this.findViewById(R.id.to_location_b);
-        toLocationB.setOnClickListener(this);
+        /*toLocationB = (Button)this.findViewById(R.id.to_location_b);
+        toLocationB.setOnClickListener(this);*/
 
-        searchB = (Button)findViewById(R.id.search_b);
-        searchB.setOnClickListener(this);
+        /*searchB = (Button)findViewById(R.id.search_b);
+        searchB.setOnClickListener(this);*/
 
         navigateFAB = (FloatingActionButton)this.findViewById(R.id.navigate_fab);
         navigateFAB.setShadow(true);
-        navigateFAB.setColorNormalResId(R.color.accent);
-        navigateFAB.setColorPressedResId(R.color.accent_light);
+        navigateFAB.setColorNormalResId(R.color.secondary);
+        navigateFAB.setColorPressedResId(R.color.secondary_light);
         navigateFAB.setImageResource(R.drawable.ic_navigate);
         navigateFAB.setOnClickListener(this);
 
@@ -216,6 +225,11 @@ public class Map extends Activity
             public void onReceive(Context context, Intent intent) {
                 Toast.makeText(Map.this, "Route data gotten", Toast.LENGTH_LONG).show();
                 routes = intent.getParcelableArrayListExtra(Route.PARCELABLE_KEY);
+                Log.d(TAG, "************************* ALL ROUTES ****************************");
+                for(int i = 0; i < routes.size(); i++){
+                    Log.d(TAG, routes.get(i).getShortName());
+                }
+                Log.d(TAG, "************************* END ROUTES ****************************");
             }
         };
     }
@@ -324,34 +338,34 @@ public class Map extends Activity
             pin = PIN_FROM;
             setDropPinMode();
         }
-        else if(view == fromLocationB){
+        /*else if(view == fromLocationB){
             Location myLocation = locationClient.getLastLocation();
             if(myLocation != null){
                 String name = getLocationName(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()));
                 fromPoint = new RoutePoint(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), name, RoutePoint.MODE_CURR_LOC);
                 fromACTV.setText(fromPoint.getName());
             }
-        }
+        }*/
         else if(view == toDropPinB){
             pin = PIN_TO;
             setDropPinMode();
         }
-        else if(view == toLocationB){
+        /*else if(view == toLocationB){
             Location myLocation = locationClient.getLastLocation();
             if(myLocation != null){
                 String name = getLocationName(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()));
                 toPoint = new RoutePoint(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), name, RoutePoint.MODE_CURR_LOC);
                 toACTV.setText(toPoint.getName());
             }
-        }
+        }*/
         else if(view == interactionLL || view == fromACTV || view == toACTV){
             if(mode == MODE_DROP_PIN) expandInteractionLayout();
         }
-        else if(view == searchB){
+        /*else if(view == searchB){
             toPoint.setName(toACTV.getText().toString());
 
             searchRoutesTasker.execute();
-        }
+        }*/
     }
 
     private void expandInteractionLayout() {
@@ -455,22 +469,22 @@ public class Map extends Activity
         if(view == fromACTV){
             if(isFocused){
                 if(mode == MODE_DROP_PIN) expandInteractionLayout();
-                fromLocationB.setVisibility(Button.VISIBLE);
+                //fromLocationB.setVisibility(Button.VISIBLE);
                 fromDropPinB.setVisibility(Button.VISIBLE);
             }
             else{
-                fromLocationB.setVisibility(Button.GONE);
+                //fromLocationB.setVisibility(Button.GONE);
                 fromDropPinB.setVisibility(Button.GONE);
             }
         }
         else if(view == toACTV){
             if(isFocused){
                 if(mode == MODE_DROP_PIN) expandInteractionLayout();
-                toLocationB.setVisibility(Button.VISIBLE);
+                //toLocationB.setVisibility(Button.VISIBLE);
                 toDropPinB.setVisibility(Button.VISIBLE);
             }
             else {
-                toLocationB.setVisibility(Button.GONE);
+                //toLocationB.setVisibility(Button.GONE);
                 toDropPinB.setVisibility(Button.GONE);
             }
         }
@@ -492,12 +506,20 @@ public class Map extends Activity
 
     private class PlacesSearchSuggestionTasker extends AsyncTask<RoutePoint, Integer, List<String>>{
 
-        RoutePoint routePoint;
-        AutoCompleteTextView actv;
+        private RoutePoint routePoint;
+        private AutoCompleteTextView actv;
+        private boolean isRunning;
 
         public PlacesSearchSuggestionTasker(AutoCompleteTextView actv){
             this.routePoint = null;
             this.actv = actv;
+            isRunning = false;
+        }
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            isRunning = true;
         }
 
         @Override
@@ -534,10 +556,14 @@ public class Map extends Activity
             return suggestionNames;
         }
 
+        public boolean isRunning(){
+            return isRunning;
+        }
+
         @Override
         protected void onPostExecute(List<String> places) {
             super.onPostExecute(places);
-
+            isRunning = false;
             ArrayAdapter<String> placesAA = new ArrayAdapter<String>(Map.this, android.R.layout.simple_list_item_1, places);
             actv.setAdapter(placesAA);
         }

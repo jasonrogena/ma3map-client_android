@@ -74,6 +74,42 @@ public class Route implements Parcelable {
         }
     }
 
+    public String getShortName() {
+        return shortName;
+    }
+
+    public String getLongName() {
+        return longName;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getDesc() {
+        return desc;
+    }
+
+    public int getType() {
+        return type;
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public String getColor() {
+        return color;
+    }
+
+    public String getTextColor() {
+        return textColor;
+    }
+
+    public List<Line> getLines() {
+        return lines;
+    }
+
     @Override
     public int describeContents() {
         return 0;
@@ -120,4 +156,15 @@ public class Route implements Parcelable {
             return new Route[size];
         }
     };
+
+    /**
+     * This method unloads all points in all the lines in this route. Stops are not unloaded
+     */
+    public void unloadPoints(){
+        if(this.lines != null){
+            for(int i =0; i < this.lines.size(); i++){
+                this.lines.get(i).unloadPoints();
+            }
+        }
+    }
 }
