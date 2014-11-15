@@ -71,3 +71,8 @@ Note that Google will need your release key's SHA1 fingerprint for them to give 
 You'll need to get an API key from [Google's Developer Console](https://console.developers.google.com). Set the API key as *places_api_key* in app/src/main/res/values/strings.xml. 
 
 Google doesn't need your release key's SHA1 fingerprint. Use the Public API access key for this.
+
+
+## LICENSE
+
+This code is released under the [GNU Affero General Public License version 3](http://www.gnu.org/licenses/agpl-3.0.html). Please see the file LICENSE.md for details.
