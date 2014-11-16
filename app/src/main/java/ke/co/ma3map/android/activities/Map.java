@@ -15,10 +15,6 @@ import android.location.Geocoder;
 import android.location.Location;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
-import android.os.Messenger;
-import android.os.Parcel;
 import android.support.v4.content.LocalBroadcastManager;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -106,6 +102,9 @@ public class Map extends Activity
     private PlacesSearchSuggestionTasker fromPlacesSuggestionTasker;
     private PlacesSearchSuggestionTasker toPlacesSearchSuggestionTasker;
 
+    private boolean listenForFromText;//flag determining whether text changes should be listened at that moment
+    private boolean listenForToText;//flag determining whether text changes should be listened at that moment
+
     private ArrayList<Route> routes;
     private BroadcastReceiver routeDataBroadcastReceiver;
 
@@ -122,6 +121,9 @@ public class Map extends Activity
         }
 
         mode = MODE_MAP;
+
+        listenForFromText = true;
+        listenForToText = true;
 
         //init views
         interactionLL = (LinearLayout)this.findViewById(R.id.interaction_ll);
@@ -142,19 +144,20 @@ public class Map extends Activity
             public void beforeTextChanged(CharSequence charSequence, int i, int i2, int i3) {}
             @Override
             public void onTextChanged(CharSequence charSequence, int start, int before, int count) {
-                if(fromACTV.getText().toString().length() >= 2){
+            }
+            @Override
+            public void afterTextChanged(Editable editable) {
+                if(listenForFromText && fromACTV.getText().toString().length() >= 2){
                     fromPoint = new RoutePoint();
                     fromPoint.setSelectionMode(RoutePoint.MODE_TYPED);
                     fromPoint.setName(fromACTV.getText().toString());
 
                     //if(fromPlacesSuggestionTasker.isRunning() == false){
-                        fromPlacesSuggestionTasker = new PlacesSearchSuggestionTasker(fromACTV);//reinitialize the asynctaks. You can only run an asynctask once
-                        fromPlacesSuggestionTasker.execute(fromPoint);
+                    fromPlacesSuggestionTasker = new PlacesSearchSuggestionTasker(fromACTV);//reinitialize the asynctaks. You can only run an asynctask once
+                    fromPlacesSuggestionTasker.execute(fromPoint);
                     //}
                 }
             }
-            @Override
-            public void afterTextChanged(Editable editable) {}
         });
         //fromACTV.setOnClickListener(this);
         fromDropPinB = (Button)this.findViewById(R.id.from_drop_pin_b);
@@ -171,19 +174,20 @@ public class Map extends Activity
             public void beforeTextChanged(CharSequence charSequence, int i, int i2, int i3) {}
             @Override
             public void onTextChanged(CharSequence charSequence, int start, int before, int count) {
-                if(toACTV.getText().toString().length() >= 2){
+            }
+            @Override
+            public void afterTextChanged(Editable editable) {
+                if(listenForToText && toACTV.getText().toString().length() >= 2){
                     toPoint = new RoutePoint();
                     toPoint.setSelectionMode(RoutePoint.MODE_TYPED);
                     toPoint.setName(toACTV.getText().toString());
 
                     //if(toPlacesSearchSuggestionTasker.isRunning() == false) {
-                        toPlacesSearchSuggestionTasker = new PlacesSearchSuggestionTasker(toACTV);
-                        toPlacesSearchSuggestionTasker.execute(toPoint);
+                    toPlacesSearchSuggestionTasker = new PlacesSearchSuggestionTasker(toACTV);
+                    toPlacesSearchSuggestionTasker.execute(toPoint);
                     //}
                 }
             }
-            @Override
-            public void afterTextChanged(Editable editable) {}
         });
         //toACTV.setOnClickListener(this);
         toDropPinB = (Button)this.findViewById(R.id.to_drop_pin_b);
@@ -439,11 +443,36 @@ public class Map extends Activity
         else if(mode == MODE_DROP_PIN){
             String location = dropPin(latLng, pin, null);
             if(pin == PIN_FROM){
+                listenForFromText = false;
                 fromACTV.setText(location);
+                listenForFromText = true;
             }
             else if(pin == PIN_TO){
+                listenForToText = false;
                 toACTV.setText(location);
+                listenForToText = true;
             }
+
+            //log the RoutePoints
+            if(fromPoint != null) {
+                Log.d(TAG, "fromPoint selectionMode = " + fromPoint.getSelectionMode());
+                if (fromPoint.getLatLng() != null)
+                    Log.d(TAG, "fromPoint latLng = " + fromPoint.getLatLng());
+                else Log.d(TAG, "fromPoint latLng = null");
+                if (fromPoint.getPlaceID() != null)
+                    Log.d(TAG, "fromPoint placeID = " + fromPoint.getPlaceID());
+                else Log.d(TAG, "fromPoint placeID = null");
+            }
+            if(toPoint != null) {
+                Log.d(TAG, "toPoint selectionMode = " + toPoint.getSelectionMode());
+                if (toPoint.getLatLng() != null)
+                    Log.d(TAG, "toPoint latLng = " + toPoint.getLatLng());
+                else Log.d(TAG, "toPoint latLng = null");
+                if (toPoint.getPlaceID() != null)
+                    Log.d(TAG, "toPoint placeID = " + toPoint.getPlaceID());
+                else Log.d(TAG, "toPoint placeID = null");
+            }
+
         }
     }
 
