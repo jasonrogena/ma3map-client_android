@@ -50,7 +50,7 @@ import ke.co.ma3map.android.listeners.ProgressListener;
  * an AsyncTask as they are might block the UI thread if not
  */
 public class Data {
-    private static final String TAG = "Data";
+    private static final String TAG = "ma3map.Data";
 
     private static final String SERVER_URL = "http://ma3map.herokuapp.com";
     private static final int HTTP_POST_TIMEOUT = 20000;
@@ -362,7 +362,6 @@ public class Data {
         }
 
         try {
-            Log.d(TAG, "suggestions = "+jsonResults.toString());
             // Create a JSON object hierarchy from the results
             JSONObject jsonObj = new JSONObject(jsonResults.toString());
             JSONArray predsJsonArray = jsonObj.getJSONArray("predictions");
@@ -424,6 +423,7 @@ public class Data {
             JSONObject jsonObj = new JSONObject(jsonResults.toString());
             org.json.JSONObject location = jsonObj.getJSONObject("result").getJSONObject("geometry").getJSONObject("location");
 
+            Log.d(TAG, "Latitude = "+location.getString("lat")+" longitude = "+location.getString("lng")+" for "+placeID);
             return new LatLng(Double.parseDouble(location.getString("lat")), Double.parseDouble(location.getString("lng")));
         } catch (JSONException e) {
             Log.e(TAG, "Cannot process JSON results", e);

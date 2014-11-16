@@ -11,7 +11,7 @@ import android.util.Log;
  * Created by jason on 21/09/14.
  */
 public class Database extends SQLiteOpenHelper {
-    private static final String TAG = "Database";
+    private static final String TAG = "ma3map.Database";
 
     private static final String DB_NAME = "ma3map";
     private static final int DB_VERSION = 1;

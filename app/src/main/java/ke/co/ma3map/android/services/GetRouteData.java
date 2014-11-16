@@ -27,7 +27,7 @@ import ke.co.ma3map.android.listeners.ProgressListener;
 public class GetRouteData extends IntentService
                             implements ProgressListener{
 
-    private static final String TAG = "GetRouteData";
+    private static final String TAG = "ma3map.GetRouteData";
     private final int NOTIFICATION_ID = 1;
     public static final String ACTION_GET_ROUTE_DATA = "ke.co.ma3map.android.action.getRouteData";
 

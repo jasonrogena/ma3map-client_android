@@ -27,6 +27,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
@@ -68,7 +69,7 @@ public class Map extends Activity
                             GoogleMap.OnMapClickListener,
                             View.OnFocusChangeListener, Serializable{
 
-    private final String TAG = "Map";
+    private final String TAG = "ma3map.Map";
 
     private final int DEFAULT_ZOOM = 10;
     private final long I_LAYOUT_TRANS_TIME = 600;//the time in milliseconds it will take to hide/show the interaction layout
@@ -90,6 +91,7 @@ public class Map extends Activity
     private AutoCompleteTextView fromACTV;
     private AutoCompleteTextView toACTV;
     private FloatingActionButton navigateFAB;
+    private FloatingActionButton searchFAB;
     private EditText phantomET;
     private Button fromDropPinB;
     //private Button fromLocationB;
@@ -145,10 +147,10 @@ public class Map extends Activity
                     fromPoint.setSelectionMode(RoutePoint.MODE_TYPED);
                     fromPoint.setName(fromACTV.getText().toString());
 
-                    if(fromPlacesSuggestionTasker.isRunning() == false){
+                    //if(fromPlacesSuggestionTasker.isRunning() == false){
                         fromPlacesSuggestionTasker = new PlacesSearchSuggestionTasker(fromACTV);//reinitialize the asynctaks. You can only run an asynctask once
                         fromPlacesSuggestionTasker.execute(fromPoint);
-                    }
+                    //}
                 }
             }
             @Override
@@ -174,10 +176,10 @@ public class Map extends Activity
                     toPoint.setSelectionMode(RoutePoint.MODE_TYPED);
                     toPoint.setName(toACTV.getText().toString());
 
-                    if(toPlacesSearchSuggestionTasker.isRunning() == false) {
+                    //if(toPlacesSearchSuggestionTasker.isRunning() == false) {
                         toPlacesSearchSuggestionTasker = new PlacesSearchSuggestionTasker(toACTV);
                         toPlacesSearchSuggestionTasker.execute(toPoint);
-                    }
+                    //}
                 }
             }
             @Override
@@ -198,6 +200,13 @@ public class Map extends Activity
         navigateFAB.setColorPressedResId(R.color.secondary_light);
         navigateFAB.setImageResource(R.drawable.ic_navigate);
         navigateFAB.setOnClickListener(this);
+
+        searchFAB = (FloatingActionButton)this.findViewById(R.id.search_fab);
+        searchFAB.setShadow(true);
+        searchFAB.setColorNormalResId(R.color.secondary);
+        searchFAB.setColorPressedResId(R.color.secondary_light);
+        searchFAB.setOnClickListener(this);
+
 
         googleMap = ((MapFragment)getFragmentManager().findFragmentById(R.id.map)).getMap();
         googleMap.setMyLocationEnabled(true);
@@ -220,6 +229,7 @@ public class Map extends Activity
         PlacesSearchSuggestionTasker toPlacesSuggestions = new PlacesSearchSuggestionTasker(toACTV);
         toPlacesSuggestions.execute(0);*/
 
+        routes = null;
         routeDataBroadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -361,11 +371,11 @@ public class Map extends Activity
         else if(view == interactionLL || view == fromACTV || view == toACTV){
             if(mode == MODE_DROP_PIN) expandInteractionLayout();
         }
-        /*else if(view == searchB){
-            toPoint.setName(toACTV.getText().toString());
-
-            searchRoutesTasker.execute();
-        }*/
+        else if(view == searchFAB){
+            Log.d(TAG, "Search FAB clicked");
+            searchRoutesTasker = new SearchRoutesTasker(fromPoint, toPoint);
+            searchRoutesTasker.execute(0);
+        }
     }
 
     private void expandInteractionLayout() {
@@ -427,7 +437,7 @@ public class Map extends Activity
             navigateFAB.show(true);
         }
         else if(mode == MODE_DROP_PIN){
-            String location = dropPin(latLng, pin);
+            String location = dropPin(latLng, pin, null);
             if(pin == PIN_FROM){
                 fromACTV.setText(location);
             }
@@ -437,11 +447,15 @@ public class Map extends Activity
         }
     }
 
-    private String dropPin(LatLng latLng, long pin){
-        String locationName = getLocationName(latLng);
+    private String dropPin(LatLng latLng, long pin, String name){
+        String locationName = null;
+        if(name == null) locationName = getLocationName(latLng);
         float hue = 0f;
+
         if(pin == PIN_FROM) {
-            fromPoint = new RoutePoint(latLng, locationName, RoutePoint.MODE_DROP_PIN);
+            if(name == null) {
+                fromPoint = new RoutePoint(latLng, locationName, RoutePoint.MODE_DROP_PIN);
+            }
 
             hue = BitmapDescriptorFactory.HUE_RED;
             if(fromMarker != null) fromMarker.remove();
@@ -451,7 +465,9 @@ public class Map extends Activity
                     .icon(BitmapDescriptorFactory.defaultMarker(hue)));
         }
         else if(pin == PIN_TO) {
-            toPoint = new RoutePoint(latLng, locationName, RoutePoint.MODE_DROP_PIN);
+            if(name == null) {
+                toPoint = new RoutePoint(latLng, locationName, RoutePoint.MODE_DROP_PIN);
+            }
 
             hue = BitmapDescriptorFactory.HUE_GREEN;
             if(toMarker != null)toMarker.remove();
@@ -504,7 +520,7 @@ public class Map extends Activity
         return null;
     }
 
-    private class PlacesSearchSuggestionTasker extends AsyncTask<RoutePoint, Integer, List<String>>{
+    private class PlacesSearchSuggestionTasker extends AsyncTask<RoutePoint, Integer, List<String[]>>{
 
         private RoutePoint routePoint;
         private AutoCompleteTextView actv;
@@ -523,37 +539,37 @@ public class Map extends Activity
         }
 
         @Override
-        protected List<String> doInBackground(RoutePoint... routePoints) {
+        protected List<String[]> doInBackground(RoutePoint... routePoints) {
             routePoint = routePoints[0];
 
             List<String> names = new ArrayList<String>();
             String typed = routePoint.getName();
-            /*try {
-                List<Address> addresses = new Geocoder(Map.this).getFromLocationName(typed, 10, -1.501543, 36.196317, -0.620050, 37.451505);//kajiado to kirinyaga
-
-                for(int index = 0; index < addresses.size(); index++){
-                    if(addresses.get(index).getFeatureName() != null){
-                        names.add(addresses.get(index).getFeatureName());
-                    }
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }*/
 
             List<String[]> suggestions = Data.getPlaceSuggestions(Map.this, typed);
-
-            List<String> suggestionNames = new ArrayList<String>();
-            for(int i = 0; i < suggestions.size(); i++){
-                suggestionNames.add(suggestions.get(i)[1]);
-            }
 
             //set the first suggestion as the current location
             if(suggestions.size() > 0){
                 Log.d(TAG, "most relevant placeID is "+suggestions.get(0)[0]);
                 routePoint.setPlaceID(suggestions.get(0)[0]);//assuming here the first item in the array is the most relevant
+                routePoint.setLatLng(null);
+
+                if(fromPoint != null){
+                    Log.d(TAG, "fromPoint selectionMode = "+fromPoint.getSelectionMode());
+                    if(fromPoint.getLatLng() != null) Log.d(TAG, "fromPoint latLng = "+fromPoint.getLatLng());
+                    else Log.d(TAG, "fromPoint latLng = null");
+                    if(fromPoint.getPlaceID() != null) Log.d(TAG, "fromPoint placeID = "+fromPoint.getPlaceID());
+                    else Log.d(TAG, "fromPoint placeID = null");
+                }
+                if(toPoint != null){
+                    Log.d(TAG, "toPoint selectionMode = "+toPoint.getSelectionMode());
+                    if(toPoint.getLatLng() != null) Log.d(TAG, "toPoint latLng = "+toPoint.getLatLng());
+                    else Log.d(TAG, "toPoint latLng = null");
+                    if(toPoint.getPlaceID() != null) Log.d(TAG, "toPoint placeID = "+toPoint.getPlaceID());
+                    else Log.d(TAG, "toPoint placeID = null");
+                }
             }
 
-            return suggestionNames;
+            return suggestions;
         }
 
         public boolean isRunning(){
@@ -561,11 +577,39 @@ public class Map extends Activity
         }
 
         @Override
-        protected void onPostExecute(List<String> places) {
+        protected void onPostExecute(final List<String[]> places) {
             super.onPostExecute(places);
+
+            List<String> suggestionNames = new ArrayList<String>();
+            for(int i = 0; i < places.size(); i++){
+                suggestionNames.add(places.get(i)[1]);
+            }
             isRunning = false;
-            ArrayAdapter<String> placesAA = new ArrayAdapter<String>(Map.this, android.R.layout.simple_list_item_1, places);
+            ArrayAdapter<String> placesAA = new ArrayAdapter<String>(Map.this, android.R.layout.simple_list_item_1, suggestionNames);
             actv.setAdapter(placesAA);
+
+            actv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
+                    //assuming that the routePoint is a pointer to the main route point (either fromPoint or toPoint)
+                    routePoint.setPlaceID(places.get(position)[0]);
+                    routePoint.setLatLng(null);
+                    if(fromPoint != null){
+                        Log.d(TAG, "fromPoint selectionMode = "+fromPoint.getSelectionMode());
+                        if(fromPoint.getLatLng() != null) Log.d(TAG, "fromPoint latLng = "+fromPoint.getLatLng());
+                        else Log.d(TAG, "fromPoint latLng = null");
+                        if(fromPoint.getPlaceID() != null) Log.d(TAG, "fromPoint placeID = "+fromPoint.getPlaceID());
+                        else Log.d(TAG, "fromPoint placeID = null");
+                    }
+                    if(toPoint != null){
+                        Log.d(TAG, "toPoint selectionMode = "+toPoint.getSelectionMode());
+                        if(toPoint.getLatLng() != null) Log.d(TAG, "toPoint latLng = "+toPoint.getLatLng());
+                        else Log.d(TAG, "toPoint latLng = null");
+                        if(toPoint.getPlaceID() != null) Log.d(TAG, "toPoint placeID = "+toPoint.getPlaceID());
+                        else Log.d(TAG, "toPoint placeID = null");
+                    }
+                }
+            });
         }
     }
 
@@ -574,13 +618,18 @@ public class Map extends Activity
         ProgressDialog progressDialog;
         RoutePoint from;
         RoutePoint to;
+        String message;
+
+        public SearchRoutesTasker(RoutePoint from, RoutePoint to){
+            this.from = from;
+            this.to = to;
+
+            message = null;
+        }
 
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
-
-            from = fromPoint;
-            to = toPoint;
 
             progressDialog = ProgressDialog.show(Map.this, null, null, true, true, new DialogInterface.OnCancelListener() {
                 @Override
@@ -592,29 +641,35 @@ public class Map extends Activity
 
         @Override
         protected List<Commute> doInBackground(Integer... integers) {
-            if(to.getName().length() > 0 && from.getName().length() > 0){
-                //1. check if LatLng for to and from set and set if not
-                if(to.getSelectionMode() == RoutePoint.MODE_TYPED && to.getLatLng() == null){
+            if(to != null && from != null){
+                if(to.getName().length() > 0 && from.getName().length() > 0){
+                    //1. check if LatLng for to and from set and set if not
+                    if(to.getSelectionMode() == RoutePoint.MODE_TYPED && to.getLatLng() == null && to.getPlaceID()!=null){
+                        to.setLatLng(Data.getPlaceLatLng(Map.this, to.getPlaceID()));
+                    }
+                    else {
+                        Log.e(TAG, "To point set using either drop pin or current position but LatLng not set");
+                        return null;
+                    }
 
+                    if(from.getSelectionMode() == RoutePoint.MODE_TYPED && from.getLatLng() == null && from.getPlaceID()!=null){
+                        from.setLatLng(Data.getPlaceLatLng(Map.this, from.getPlaceID()));
+                    }
+                    else {
+                        Log.e(TAG, "From point set using either drop pin or current position but LatLng not set");
+                        return null;
+                    }
+
+                    //2. get cached route data
+                    if(routes != null){
+                        //3. get closest stops
+
+                        //4. determine commutes using closest stops
+                    }
+                    else {
+                        message = "Route data not available at the moment";
+                    }
                 }
-                else {
-                    Log.e(TAG, "To point set using either drop pin or current position but LatLng not set");
-                    return null;
-                }
-
-                if(from.getSelectionMode() == RoutePoint.MODE_TYPED && from.getLatLng() == null){
-
-                }
-                else {
-                    Log.e(TAG, "From point set using either drop pin or current position but LatLng not set");
-                    return null;
-                }
-
-                //2. get cached route data
-
-                //3. get closest stops
-
-                //4. determine commutes using closest stops
             }
             return null;
         }
@@ -624,6 +679,9 @@ public class Map extends Activity
             super.onPostExecute(commutes);
 
             progressDialog.dismiss();
+            if(message != null){
+                Toast.makeText(Map.this, message, Toast.LENGTH_LONG).show();
+            }
         }
     }
 
@@ -667,6 +725,7 @@ public class Map extends Activity
         }
 
         public void setName(String name) {
+            Log.d(TAG, "Name changed to "+name);
             this.name = name;
         }
 
@@ -675,6 +734,7 @@ public class Map extends Activity
         }
 
         public void setSelectionMode(int selectionMode) {
+            Log.d(TAG, "Selection mode changed to "+selectionMode);
             this.selectionMode = selectionMode;
         }
 
@@ -683,6 +743,7 @@ public class Map extends Activity
         }
 
         public void setPlaceID(String placeID){
+            Log.d(TAG, "PlaceID changed to "+placeID);
             this.placeID = placeID;
         }
 

@@ -11,7 +11,7 @@ import ke.co.ma3map.android.R;
  */
 public class Preferences {
 
-    private static final String TAG = "Preferences";
+    private static final String TAG = "ma3map.Preferences";
 
     public static final String SP_GET_DATA_FLAG = "getDataFlag";
     public static final String SP_GET_DATA_MESSAGE = "getDataMessage";

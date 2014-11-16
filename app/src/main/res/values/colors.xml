@@ -4,6 +4,8 @@
     <color name="primary">#4285f4</color>
     <color name="primary_dark">#2d5ba8</color>
     <color name="accent">#ffffff</color>
-    <color name="secondary">#558b2f</color>
-    <color name="secondary_light">#7cb342</color>
+    <!--color name="secondary">#558b2f</color-->
+    <color name="secondary">#F44336</color>
+    <!--color name="secondary_light">#7cb342</color-->
+    <color name="secondary_light">#EF5350</color>
 </resources>
