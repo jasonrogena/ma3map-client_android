@@ -245,6 +245,38 @@ public class Data {
     }
 
     /**
+     * This method gets cached map data from the local SQLite database
+     *
+     * @param willProgressContinue  If set to true, this method will send a signal to onProgress on all the registered ProgressListeners instead of onDone
+     * @param bundleKey             The key to be used to bundle the data in the progress listeners
+     *
+     * @return                      An array list of all the route data
+     */
+    public ArrayList<Route> getCachedRouteData(boolean willProgressContinue, String bundleKey, boolean light){
+        Database database = new Database(context);
+        SQLiteDatabase readableDB = database.getReadableDatabase();
+
+        String[][] routeRows = database.runSelectQuery(readableDB, Database.TABLE_ROUTE, Route.ALL_COLUMNS, null, null, null, null, null, null);
+        ArrayList<Route> routes = new ArrayList<Route>();
+
+        updateProgressListeners(0, 100, "Getting cached route data", ProgressListener.FLAG_WORKING);
+        for(int routeIndex = 0; routeIndex < routeRows.length; routeIndex++){
+            Route currRoute = new Route(database, readableDB, routeRows[routeIndex], light);
+            routes.add(currRoute);
+            Log.d(TAG, "processed "+(routeIndex+1) + " of "+routeRows.length);
+            updateProgressListeners(Math.round(((routeIndex+1) * 100)/routeRows.length), 100, "Getting cached route data", ProgressListener.FLAG_WORKING);
+        }
+
+        if(willProgressContinue == false){
+            Bundle output = new Bundle();
+            output.putParcelableArrayList(bundleKey, routes);
+
+            finalizeProgressListeners(output, "Done getting cached route data", ProgressListener.FLAG_DONE);
+        }
+        return routes;
+    }
+
+    /**
      * This method pings the server and checks if it responds before the timeout
      *
      * @param timeout
@@ -315,6 +347,19 @@ public class Data {
         }
 
         return routes;
+    }
+
+    /**
+     * This method checks whether the route data is stored in the local SQLite database
+     * @return
+     */
+    public boolean isRouteDataPresent(){
+        Database database = new Database(context);
+        SQLiteDatabase readableDB = database.getReadableDatabase();
+        String[][] points = database.runSelectQuery(readableDB, Database.TABLE_POINT, new String[]{"line_id"}, null, null, null, null, null, "1");
+        if(points != null && points.length > 0) return true;
+
+        return false;
     }
 
     /**

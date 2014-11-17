@@ -15,6 +15,7 @@ import ke.co.ma3map.android.helpers.JSONObject;
 public class Point implements Parcelable{
     //point_lat text, point_lon text, point_sequence int, dist_traveled int
     public static final String PARCELABLE_KEY = "Point";
+    public static final String[] ALL_COLUMNS = new String[]{"line_id", "point_lat", "point_lon", "point_sequence", "dist_traveled"};
 
     private String lat;
     private String lon;
@@ -40,11 +41,18 @@ public class Point implements Parcelable{
         distTraveled = pointData.getInt("dist_traveled");
     }
 
+    public Point(String[] columnValues){
+        //{"line_id", "point_lat", "point_lon", "point_sequence", "dist_traveled"};
+        lat = columnValues[1];
+        lon = columnValues[2];
+        sequence = Integer.parseInt(columnValues[3]);
+        distTraveled = Integer.parseInt(columnValues[4]);
+    }
+
     public void insertIntoDB(Database database, SQLiteDatabase writableDB, String lineID){
-        String[] columns = {"line_id", "point_lat", "point_lon", "point_sequence", "dist_traveled"};
         String[] values = {lineID, lat, lon, String.valueOf(sequence), String.valueOf(distTraveled)};
 
-        database.runInsertQuery(Database.TABLE_POINT, columns, values, -1, writableDB);
+        database.runInsertQuery(Database.TABLE_POINT, ALL_COLUMNS, values, -1, writableDB);
     }
 
     @Override

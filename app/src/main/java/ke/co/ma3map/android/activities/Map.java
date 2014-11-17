@@ -55,7 +55,9 @@ import java.util.Locale;
 import ke.co.ma3map.android.R;
 import ke.co.ma3map.android.carriers.Commute;
 import ke.co.ma3map.android.carriers.Route;
+import ke.co.ma3map.android.carriers.Stop;
 import ke.co.ma3map.android.handlers.Data;
+import ke.co.ma3map.android.listeners.ProgressListener;
 import ke.co.ma3map.android.services.GetRouteData;
 
 public class Map extends Activity
@@ -226,7 +228,8 @@ public class Map extends Activity
         interactionLL.addView(phantomET);
 
         //ask user for permission to get route data
-        getRouteData();
+        DataStatusTasker dataStatusTasker = new DataStatusTasker();
+        dataStatusTasker.execute(0);
 
         /*PlacesSearchSuggestionTasker fromPlacesSuggestions = new PlacesSearchSuggestionTasker(fromACTV);
         fromPlacesSuggestions.execute(0);
@@ -676,22 +679,91 @@ public class Map extends Activity
                     if(to.getSelectionMode() == RoutePoint.MODE_TYPED && to.getLatLng() == null && to.getPlaceID()!=null){
                         to.setLatLng(Data.getPlaceLatLng(Map.this, to.getPlaceID()));
                     }
-                    else {
-                        Log.e(TAG, "To point set using either drop pin or current position but LatLng not set");
+                    else if(to.getSelectionMode() == RoutePoint.MODE_TYPED){
+                        Log.e(TAG, "No locationID for to point found");
                         return null;
                     }
 
                     if(from.getSelectionMode() == RoutePoint.MODE_TYPED && from.getLatLng() == null && from.getPlaceID()!=null){
                         from.setLatLng(Data.getPlaceLatLng(Map.this, from.getPlaceID()));
                     }
-                    else {
-                        Log.e(TAG, "From point set using either drop pin or current position but LatLng not set");
+                    else if(from.getSelectionMode() == RoutePoint.MODE_TYPED) {
+                        Log.e(TAG, "No locationID for from point found");
                         return null;
                     }
 
                     //2. get cached route data
                     if(routes != null){
                         //3. get closest stops
+                        Log.d(TAG, "Getting all stops");
+                        List<Stop> allStops = new ArrayList<Stop>();
+
+                        for(int routeIndex = 0; routeIndex < routes.size(); routeIndex++){
+                            List<Stop> routeStops = routes.get(routeIndex).getStops(0);
+                            Log.d(TAG, "Route has "+routeStops.size()+" stops");
+
+                            for(int rStopIndex = 0 ; rStopIndex < routeStops.size(); rStopIndex++){
+                                boolean isThere = false;
+                                Log.d(TAG, "Comparing current stop in route with "+allStops.size()+" other stops");
+                                for(int aStopIndex = 0; aStopIndex < allStops.size(); aStopIndex++){
+                                    if(routeStops.get(rStopIndex).getId() != null)
+                                    Log.d(TAG, "current routeStop ID = " + routeStops.get(rStopIndex).getId());
+                                    else
+                                    Log.d(TAG, "current routeStop ID = null");
+
+                                    if(routeStops.get(rStopIndex).getLat().equals(allStops.get(aStopIndex).getLat())
+                                            && routeStops.get(rStopIndex).getLon().equals(allStops.get(aStopIndex).getLon())){
+                                        isThere = true;
+                                        break;
+                                    }
+                                }
+
+                                if(isThere == false){
+                                    allStops.add(routeStops.get(rStopIndex));
+                                }
+                            }
+                        }
+
+                        Log.d(TAG, "Number of stops = "+allStops.size());
+
+                        double closestFromStopDistance = -1;
+                        int closestFromStopIndex = -1;
+                        double closestToStopDistance = -1;
+                        int closestToStopIndex = -1;
+
+                        //do distance calculations for all the stops
+                        Log.d(TAG, "Getting closest from and to stops");
+                        for(int stopIndex = 0; stopIndex < allStops.size(); stopIndex++){
+                            Stop currStop = allStops.get(stopIndex);
+
+                            double fromDistance = currStop.getDistance(from.getLatLng());
+                            double toDistance = currStop.getDistance(to.getLatLng());
+
+                            if(closestFromStopDistance == -1 || closestFromStopDistance > fromDistance){
+                                closestFromStopDistance = fromDistance;
+                                closestFromStopIndex = stopIndex;
+                            }
+
+                            if(closestToStopDistance == -1 || closestToStopDistance > toDistance){
+                                closestToStopDistance = toDistance;
+                                closestToStopIndex = stopIndex;
+                            }
+                        }
+
+                        if(closestFromStopIndex != -1){
+                            Log.d(TAG, "distance in metres between from and closest stop = "+allStops.get(closestFromStopIndex).getDistance(from.getLatLng()));
+                            Log.d(TAG, "closest from stop = "+allStops.get(closestFromStopIndex).getName());
+                            Log.d(TAG, "closest from stop lat = "+allStops.get(closestFromStopIndex).getLat());
+                            Log.d(TAG, "closest from stop lon = "+allStops.get(closestFromStopIndex).getLon());
+                        }
+                        else Log.d(TAG, "Unable to get stop close to from");
+                        if(closestToStopIndex != -1){
+                            Log.d(TAG, "distance in metres between destination and closest stop = "+allStops.get(closestToStopIndex).getDistance(to.getLatLng()));
+                            Log.d(TAG, "closest from stop = "+allStops.get(closestToStopIndex).getName());
+                            Log.d(TAG, "closest from stop lat = "+allStops.get(closestToStopIndex).getLat());
+                            Log.d(TAG, "closest from stop lon = "+allStops.get(closestToStopIndex).getLon());
+                        }
+                        else Log.d(TAG, "Unable to get stop close to destination");
 
                         //4. determine commutes using closest stops
                     }
@@ -711,6 +783,78 @@ public class Map extends Activity
             if(message != null){
                 Toast.makeText(Map.this, message, Toast.LENGTH_LONG).show();
             }
+        }
+    }
+
+    private class DataStatusTasker extends AsyncTask<Integer, Integer, Boolean>{
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+        }
+
+        @Override
+        protected Boolean doInBackground(Integer... integers) {
+            Data data = new Data(Map.this);
+            return new Boolean(data.isRouteDataPresent());
+        }
+
+        @Override
+        protected void onPostExecute(Boolean result) {
+            super.onPostExecute(result);
+
+            if(result == true){
+                FetchDataTasker fetchDataTasker = new FetchDataTasker();
+                fetchDataTasker.execute(0);
+            }
+            else {
+                getRouteData();//ask user for permission to get data from the server
+            }
+        }
+    }
+
+    /**
+     * This class spawns an asynctask to fetch route data cached in the local SQLite Database
+     */
+    private class FetchDataTasker extends AsyncTask<Integer, Double, ArrayList<Route>>
+                                    implements ProgressListener{
+
+        ProgressDialog progressDialog;
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+
+            progressDialog = new ProgressDialog(Map.this);
+            progressDialog.setMessage("Getting cached route data");
+            progressDialog.setIndeterminate(false);
+            progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+            progressDialog.show();
+        }
+
+        @Override
+        protected ArrayList<Route> doInBackground(Integer... integers) {
+            Data data = new Data(Map.this);
+            data.addProgressListener(FetchDataTasker.this);
+            return data.getCachedRouteData(false, Route.PARCELABLE_KEY, true);
+        }
+
+        @Override
+        protected void onPostExecute(ArrayList<Route> routes) {
+            super.onPostExecute(routes);
+            progressDialog.dismiss();
+            Toast.makeText(Map.this, "Done getting route data", Toast.LENGTH_LONG).show();
+
+            Map.this.routes = routes;
+        }
+
+        @Override
+        public void onProgress(int progress, int end, String message, int flag) {
+            Log.d(TAG, "getCachedRouteData progress = "+progress);
+            progressDialog.setProgress(progress);
+        }
+
+        @Override
+        public void onDone(Bundle output, String message, int flag) {
         }
     }
 
