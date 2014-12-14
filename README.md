@@ -1,4 +1,4 @@
-# ma3map
+# ma3map [![Build Status](https://travis-ci.org/ma3map/ma3map-client_android.svg?branch=master)](https://travis-ci.org/ma3map/ma3map-client_android)
 
 This is my attempt in putting [Nairobi matatu transit route data](http://www.gtfs-data-exchange.com/agency/university-of-nairobi-c4dlab/) by [Digital Matatus](http://www.digitalmatatus.com/) to good use.
 
