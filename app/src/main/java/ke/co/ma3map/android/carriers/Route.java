@@ -146,6 +146,43 @@ public class Route implements Parcelable {
         return lines.get(lineIndex).getStops();
     }
 
+    public boolean isStopInRoute(Stop stop){
+        for(int index = 0; index < lines.size(); index++){
+            if(lines.get(index).isStopInLine(stop)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public double getDistanceToStop(Stop stop){
+        double closest = -1;
+        for(int index = 0; index < lines.size(); index++){
+            double currDistance = lines.get(index).getDistanceToStop(stop);
+            if(closest == -1 || currDistance < closest){
+                closest = currDistance;
+            }
+        }
+        return closest;
+    }
+
+    public Stop getClosestStop(Stop stop){
+        Stop closestStop = null;
+        double closestDistance = -1;
+        for(int index = 0; index < lines.size(); index++){
+            Stop currCloseStop = lines.get(index).getClosestStop(stop);
+
+            if(closestDistance == -1 || (currCloseStop != null && currCloseStop.getDistance(stop.getLatLng()) < closestDistance)){
+                closestStop = currCloseStop;
+                if(currCloseStop != null){
+                    closestDistance = currCloseStop.getDistance(stop.getLatLng());
+                }
+            }
+        }
+
+        return closestStop;
+    }
+
     @Override
     public int describeContents() {
         return 0;

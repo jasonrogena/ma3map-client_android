@@ -48,7 +48,9 @@ import com.melnykov.fab.FloatingActionButton;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -56,6 +58,7 @@ import ke.co.ma3map.android.R;
 import ke.co.ma3map.android.carriers.Commute;
 import ke.co.ma3map.android.carriers.Route;
 import ke.co.ma3map.android.carriers.Stop;
+import ke.co.ma3map.android.handlers.BestPath;
 import ke.co.ma3map.android.handlers.Data;
 import ke.co.ma3map.android.listeners.ProgressListener;
 import ke.co.ma3map.android.services.GetRouteData;
@@ -645,7 +648,7 @@ public class Map extends Activity
         }
     }
 
-    public class SearchRoutesTasker extends AsyncTask<Integer, Integer, List<Commute>>{
+    public class SearchRoutesTasker extends AsyncTask<Integer, Integer, ArrayList<Commute>>{
 
         ProgressDialog progressDialog;
         RoutePoint from;
@@ -672,7 +675,7 @@ public class Map extends Activity
         }
 
         @Override
-        protected List<Commute> doInBackground(Integer... integers) {
+        protected ArrayList<Commute> doInBackground(Integer... integers) {
             if(to != null && from != null){
                 if(to.getName().length() > 0 && from.getName().length() > 0){
                     //1. check if LatLng for to and from set and set if not
@@ -696,76 +699,42 @@ public class Map extends Activity
                     if(routes != null){
                         //3. get closest stops
                         Log.d(TAG, "Getting all stops");
-                        List<Stop> allStops = new ArrayList<Stop>();
+                        List<Stop> fromStops = new ArrayList<Stop>();
+                        List<Stop> toStops = new ArrayList<Stop>();
 
                         for(int routeIndex = 0; routeIndex < routes.size(); routeIndex++){
                             List<Stop> routeStops = routes.get(routeIndex).getStops(0);
-                            Log.d(TAG, "Route has "+routeStops.size()+" stops");
+                            //Log.d(TAG, "Route has "+routeStops.size()+" stops");
 
                             for(int rStopIndex = 0 ; rStopIndex < routeStops.size(); rStopIndex++){
                                 boolean isThere = false;
-                                Log.d(TAG, "Comparing current stop in route with "+allStops.size()+" other stops");
-                                for(int aStopIndex = 0; aStopIndex < allStops.size(); aStopIndex++){
-                                    if(routeStops.get(rStopIndex).getId() != null)
-                                    Log.d(TAG, "current routeStop ID = " + routeStops.get(rStopIndex).getId());
-                                    else
-                                    Log.d(TAG, "current routeStop ID = null");
-
-                                    if(routeStops.get(rStopIndex).getLat().equals(allStops.get(aStopIndex).getLat())
-                                            && routeStops.get(rStopIndex).getLon().equals(allStops.get(aStopIndex).getLon())){
+                                //Log.d(TAG, "Comparing current stop in route with "+fromStops.size()+" other stops");
+                                for(int aStopIndex = 0; aStopIndex < fromStops.size(); aStopIndex++){
+                                    if(routeStops.get(rStopIndex).getLat().equals(fromStops.get(aStopIndex).getLat())
+                                            && routeStops.get(rStopIndex).getLon().equals(fromStops.get(aStopIndex).getLon())){
                                         isThere = true;
                                         break;
                                     }
                                 }
 
                                 if(isThere == false){
-                                    allStops.add(routeStops.get(rStopIndex));
+                                    fromStops.add(routeStops.get(rStopIndex));
+                                    toStops.add(routeStops.get(rStopIndex));
                                 }
                             }
                         }
 
-                        Log.d(TAG, "Number of stops = "+allStops.size());
+                        Log.d(TAG, "Number of stops = " + fromStops.size());
 
-                        double closestFromStopDistance = -1;
-                        int closestFromStopIndex = -1;
-                        double closestToStopDistance = -1;
-                        int closestToStopIndex = -1;
-
-                        //do distance calculations for all the stops
-                        Log.d(TAG, "Getting closest from and to stops");
-                        for(int stopIndex = 0; stopIndex < allStops.size(); stopIndex++){
-                            Stop currStop = allStops.get(stopIndex);
-
-                            double fromDistance = currStop.getDistance(from.getLatLng());
-                            double toDistance = currStop.getDistance(to.getLatLng());
-
-                            if(closestFromStopDistance == -1 || closestFromStopDistance > fromDistance){
-                                closestFromStopDistance = fromDistance;
-                                closestFromStopIndex = stopIndex;
-                            }
-
-                            if(closestToStopDistance == -1 || closestToStopDistance > toDistance){
-                                closestToStopDistance = toDistance;
-                                closestToStopIndex = stopIndex;
-                            }
-                        }
-
-                        if(closestFromStopIndex != -1){
-                            Log.d(TAG, "distance in metres between from and closest stop = "+allStops.get(closestFromStopIndex).getDistance(from.getLatLng()));
-                            Log.d(TAG, "closest from stop = "+allStops.get(closestFromStopIndex).getName());
-                            Log.d(TAG, "closest from stop lat = "+allStops.get(closestFromStopIndex).getLat());
-                            Log.d(TAG, "closest from stop lon = "+allStops.get(closestFromStopIndex).getLon());
-                        }
-                        else Log.d(TAG, "Unable to get stop close to from");
-                        if(closestToStopIndex != -1){
-                            Log.d(TAG, "distance in metres between destination and closest stop = "+allStops.get(closestToStopIndex).getDistance(to.getLatLng()));
-                            Log.d(TAG, "closest from stop = "+allStops.get(closestToStopIndex).getName());
-                            Log.d(TAG, "closest from stop lat = "+allStops.get(closestToStopIndex).getLat());
-                            Log.d(TAG, "closest from stop lon = "+allStops.get(closestToStopIndex).getLon());
-                        }
-                        else Log.d(TAG, "Unable to get stop close to destination");
+                        Collections.sort(fromStops, new Stop.DistanceComparator(from.getLatLng()));//stop closest to from becomes first
+                        Collections.sort(toStops, new Stop.DistanceComparator(to.getLatLng()));//stop closest to destination becomes first
 
                         //4. determine commutes using closest stops
+                        for(int index = 0; index< fromStops.size(); index++){
+                            Log.d(TAG, "Distance between the "+index+"th from stop to from is "+fromStops.get(index).getDistance(from.getLatLng()));
+                        }
+                        BestPath bestPath = new BestPath(fromStops.subList(0, 5), toStops.subList(0, 10), routes);
+                        return bestPath.getCommutes();
                     }
                     else {
                         message = "Route data not available at the moment";
@@ -776,12 +745,45 @@ public class Map extends Activity
         }
 
         @Override
-        protected void onPostExecute(List<Commute> commutes) {
+        protected void onPostExecute(ArrayList<Commute> commutes) {
             super.onPostExecute(commutes);
 
-            progressDialog.dismiss();
-            if(message != null){
-                Toast.makeText(Map.this, message, Toast.LENGTH_LONG).show();
+            if(commutes != null){
+                double bestScore = -1;
+                int bestCommuteIndex = -1;
+
+                Log.d(TAG, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+                for(int index = 0; index < commutes.size(); index++){
+                    if(bestScore == -1 || Double.compare(commutes.get(index).getScore(),  bestScore) < 0){
+                        bestScore = commutes.get(index).getScore();
+                        bestCommuteIndex = index;
+                    }
+                    Log.d(TAG, "  Commute with index as "+index+" has score of "+commutes.get(index).getScore());
+                }
+
+                if(bestCommuteIndex != -1){
+                    Log.d(TAG, "  Best commute has score of "+commutes.get(bestCommuteIndex).getScore());
+                    Commute best = commutes.get(bestCommuteIndex);
+                    for(int index = 0; index < best.getSteps().size(); index++){
+                        if(best.getSteps().get(index).getStepType() == Commute.Step.TYPE_WALKING){
+                            Log.d(TAG, "step "+index+" is walking from "+best.getSteps().get(index).getStart().getName()+" to "+best.getSteps().get(index).getDestination().getName());
+                        }
+                        else if(best.getSteps().get(index).getStepType() == Commute.Step.TYPE_MATATU){
+                            Log.d(TAG, "step "+index+" is pandaring "+best.getSteps().get(index).getRoute().getLongName());
+                        }
+                    }
+
+
+                }
+                else {
+                    Log.d(TAG, "Could not determine commute");
+                }
+                Log.d(TAG, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+
+                progressDialog.dismiss();
+                if(message != null){
+                    Toast.makeText(Map.this, message, Toast.LENGTH_LONG).show();
+                }
             }
         }
     }
