@@ -730,10 +730,7 @@ public class Map extends Activity
                         Collections.sort(toStops, new Stop.DistanceComparator(to.getLatLng()));//stop closest to destination becomes first
 
                         //4. determine commutes using closest stops
-                        for(int index = 0; index< fromStops.size(); index++){
-                            Log.d(TAG, "Distance between the "+index+"th from stop to from is "+fromStops.get(index).getDistance(from.getLatLng()));
-                        }
-                        BestPath bestPath = new BestPath(fromStops.subList(0, 5), toStops.subList(0, 10), routes);
+                        BestPath bestPath = new BestPath(fromStops.subList(0, BestPath.MAX_FROM_POINTS), from.getLatLng(), toStops.subList(0, BestPath.MAX_TO_POINTS), to.getLatLng(), routes);
                         return bestPath.getCommutes();
                     }
                     else {
@@ -749,35 +746,26 @@ public class Map extends Activity
             super.onPostExecute(commutes);
 
             if(commutes != null){
-                double bestScore = -1;
-                int bestCommuteIndex = -1;
 
                 Log.d(TAG, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
                 for(int index = 0; index < commutes.size(); index++){
-                    if(bestScore == -1 || Double.compare(commutes.get(index).getScore(),  bestScore) < 0){
-                        bestScore = commutes.get(index).getScore();
-                        bestCommuteIndex = index;
-                    }
-                    Log.d(TAG, "  Commute with index as "+index+" has score of "+commutes.get(index).getScore());
-                }
-
-                if(bestCommuteIndex != -1){
-                    Log.d(TAG, "  Best commute has score of "+commutes.get(bestCommuteIndex).getScore());
-                    Commute best = commutes.get(bestCommuteIndex);
-                    for(int index = 0; index < best.getSteps().size(); index++){
-                        if(best.getSteps().get(index).getStepType() == Commute.Step.TYPE_WALKING){
-                            Log.d(TAG, "step "+index+" is walking from "+best.getSteps().get(index).getStart().getName()+" to "+best.getSteps().get(index).getDestination().getName());
+                    Log.d(TAG, "Commute with index as "+index+" has score of "+commutes.get(index).getScore());
+                    for(int j = 0; j < commutes.get(index).getSteps().size(); j++){
+                        Commute currCommute = commutes.get(index);
+                        if(currCommute.getSteps().get(j).getStepType() == Commute.Step.TYPE_WALKING){
+                            Log.d(TAG, "  step "+j+" is walking from "+currCommute.getSteps().get(j).getStart().getName()+" to "+currCommute.getSteps().get(j).getDestination().getName());
                         }
-                        else if(best.getSteps().get(index).getStepType() == Commute.Step.TYPE_MATATU){
-                            Log.d(TAG, "step "+index+" is pandaring "+best.getSteps().get(index).getRoute().getLongName());
+                        else if(currCommute.getSteps().get(j).getStepType() == Commute.Step.TYPE_MATATU){
+                            Log.d(TAG, "  step "+j+" is using route '"+currCommute.getSteps().get(j).getRoute().getLongName()+"("+currCommute.getSteps().get(j).getRoute().getShortName()+")'");
+                            if(currCommute.getSteps().get(j).getStart() != null)
+                                Log.d(TAG, "    from "+currCommute.getSteps().get(j).getStart().getName());
+                            if(currCommute.getSteps().get(j).getDestination() != null)
+                                Log.d(TAG, "    to "+currCommute.getSteps().get(j).getDestination().getName());
                         }
                     }
-
-
+                    Log.d(TAG, "------------------------------------------------------");
                 }
-                else {
-                    Log.d(TAG, "Could not determine commute");
-                }
+
                 Log.d(TAG, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 
                 progressDialog.dismiss();

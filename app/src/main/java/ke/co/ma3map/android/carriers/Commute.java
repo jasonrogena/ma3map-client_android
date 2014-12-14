@@ -3,7 +3,10 @@ package ke.co.ma3map.android.carriers;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.google.android.gms.maps.model.LatLng;
+
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -17,14 +20,24 @@ public class Commute implements Parcelable {
     private final double SCORE_WALKING = 0.1;//score given for each meter walked
     private final double SCORE_STOP = 2;//score given for each stop in commute
 
+    private LatLng from;//actual point on map use wants to go from
+    private LatLng to;//actual point on map user want to go to
     private List<Step> steps;
 
-    public Commute(){
+    public Commute(LatLng from, LatLng to){
+        this.from = from;
+        this.to = to;
         this.steps = new ArrayList<Step>();
     }
 
+    /*public Commute(){
+        this.from = null;
+        this.to = null;
+        this.steps = new ArrayList<Step>();
+    }*/
+
     public Commute(Parcel source){
-        this();
+        this(null, null);
         readFromParcel(source);
     }
 
@@ -67,15 +80,33 @@ public class Commute implements Parcelable {
          */
 
         double stepScore = SCORE_STEP * steps.size();
-        double stopScore = 0;
-        //TODO: get the actual route stops in the commute routes and not just all the stops
+        int noStops = 0;
         double totalDistanceWalked = 0;
+
+        //get distances from actual from and to points
+        if(steps.get(0).getStepType() == Step.TYPE_MATATU){
+            if(steps.get(0).getStart() != null){
+                totalDistanceWalked = totalDistanceWalked + steps.get(0).getStart().getDistance(from);
+            }
+        }
+
+        if(steps.get(steps.size() - 1).getStepType() == Step.TYPE_MATATU){
+            if(steps.get(steps.size() - 1).getDestination() != null){
+                totalDistanceWalked = totalDistanceWalked + steps.get(steps.size() - 1).getDestination().getDistance(to);
+            }
+        }
+
         for(int index = 0; index < steps.size(); index++){
             if(steps.get(index).getStepType() == Step.TYPE_WALKING){
                 totalDistanceWalked = totalDistanceWalked + steps.get(index).getStart().getDistance(steps.get(index).getDestination().getLatLng());
             }
+            else if(steps.get(index).getStepType() == Step.TYPE_MATATU){
+                noStops = noStops + steps.get(index).getRoute().getStops(0).size();
+            }
         }
-
+        //double stopScore = noStops * SCORE_STOP;
+        double stopScore = 0;
+        //TODO: get the actual route stops in the commute routes and not just all the stops
         double walkingScore = SCORE_WALKING * totalDistanceWalked;
 
         return stepScore + stopScore + walkingScore;
@@ -89,10 +120,14 @@ public class Commute implements Parcelable {
     @Override
     public void writeToParcel(Parcel parcel, int i) {
         parcel.writeTypedList(steps);
+        parcel.writeParcelable(from, 0);
+        parcel.writeParcelable(to, 0);
     }
 
     public void readFromParcel(Parcel in){
         in.readTypedList(steps, Step.CREATOR);
+        from = in.readParcelable(LatLng.class.getClassLoader());
+        to = in.readParcelable(LatLng.class.getClassLoader());
     }
 
     /**
@@ -209,5 +244,24 @@ public class Commute implements Parcelable {
                 return new Step[size];
             }
         };
+    }
+
+    public static class ScoreComparator implements Comparator<Commute> {
+
+        @Override
+        public int compare(Commute c0, Commute c1) {
+            double s0 = c0.getScore();
+            double s1 = c1.getScore();
+
+            if(s0 < s1){
+                return -1;
+            }
+            else if(s0 == s1){
+                return 0;
+            }
+            else {
+                return 1;
+            }
+        }
     }
 }

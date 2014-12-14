@@ -84,7 +84,7 @@ public class Line implements Parcelable {
 
     public boolean isStopInLine(Stop stop){
         for(int index = 0; index < stops.size(); index++){
-            if(stops.get(index).getLat() == stop.getLat() && stops.get(index).getLon() == stop.getLon()) {
+            if(stops.get(index).getLat().equals(stop.getLat()) && stops.get(index).getLon().equals(stop.getLon())) {
                 return true;
             }
         }

@@ -2,7 +2,10 @@ package ke.co.ma3map.android.handlers;
 
 import android.util.Log;
 
+import com.google.android.gms.maps.model.LatLng;
+
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import ke.co.ma3map.android.carriers.Commute;
@@ -15,15 +18,21 @@ import ke.co.ma3map.android.carriers.Stop;
  */
 public class BestPath {
     private static final String TAG = "ma3map.BestPath";
-    private static final int MAX_NODES = 5;//the maximum number of routes (nodes) that should be in a commute
+    private static final int MAX_NODES = 2;//the maximum number of routes (nodes) that should be in a commute
     private static final double MAX_WALKING_DISTANCE = 50;//the maximum distance allowed for waliking when connecting nodes (routes)
+    public static final int MAX_FROM_POINTS = 5;
+    public static final int MAX_TO_POINTS = 10;
     private final List<Stop> from;
+    private final LatLng actualFrom;
     private final List<Stop> to;
+    private final LatLng actualTo;
     private final ArrayList<Route> routes;
 
-    public BestPath(List<Stop> from, List<Stop> to, ArrayList<Route> routes){
+    public BestPath(List<Stop> from, LatLng actualFrom, List<Stop> to, LatLng actualTo, ArrayList<Route> routes){
         this.from = from;
+        this.actualFrom = actualFrom;
         this.to = to;
+        this.actualTo = actualTo;
         this.routes = routes;
     }
 
@@ -50,8 +59,9 @@ public class BestPath {
 
                 //ArrayList<Route> currNodes = new ArrayList<Route>();
                 //currNodes.add(fromRoutes.get(index));
-                Commute currCommute = new Commute();
+                Commute currCommute = new Commute(actualFrom, actualTo);
                 Commute.Step firstStep = new Commute.Step(Commute.Step.TYPE_MATATU);
+                firstStep.setStart(currFrom);
                 firstStep.setRoute(fromRoutes.get(index));
                 currCommute.addStep(firstStep);
                 Commute resultantBestCommute = getBestCommute(currCommute, noGoRouteIDs);
@@ -64,6 +74,9 @@ public class BestPath {
             Log.d(TAG, "########################################");
         }
 
+        if(commutes != null){
+            Collections.sort(commutes, new Commute.ScoreComparator());
+        }
         return commutes;
     }
 
@@ -79,9 +92,14 @@ public class BestPath {
 
         boolean toIsInRoute = false;
 
-        for(int toIndex = 0; toIndex < to.size(); toIndex++){
+        for(int toIndex = 0; toIndex < to.size(); toIndex++){//still assumes that to stops are ordered in terms of closeness to actual destination
             Stop currTo = to.get(toIndex);
             if(lastNode.isStopInRoute(currTo)){
+                List<Commute.Step> finalSteps = commute.getSteps();
+                if(finalSteps.get(finalSteps.size() - 1).getStepType() == Commute.Step.TYPE_MATATU){
+                    finalSteps.get(finalSteps.size() - 1).setDestination(currTo);
+                }
+                commute.setSteps(finalSteps);
                 toIsInRoute = true;
                 break;
             }
@@ -91,7 +109,7 @@ public class BestPath {
             //last node does not have the destination
 
             //check if we have reached the maxNode limit
-            if(nodes.size() >= MAX_NODES){
+            if(nodes.size() > MAX_NODES){
                 Log.d(TAG, "Node list already has a maximum number of nodes. Returning null");
                 //max nodes reached and last node does not have destination, return null
                 return null;
@@ -112,11 +130,11 @@ public class BestPath {
             Log.d(TAG, "Last node has "+nodeStops.size()+" stops");
             for (int rIndex = 0; rIndex < routes.size(); rIndex++) {
                 for(int sIndex = 0; sIndex < nodeStops.size(); sIndex++) {
-                    double distanceToStop = routes.get(rIndex).getDistanceToStop(nodeStops.get(sIndex));//if stop is in route, distance is going to be 0
-                    /*double distanceToStop = -1;
+                    //double distanceToStop = routes.get(rIndex).getDistanceToStop(nodeStops.get(sIndex));//if stop is in route, distance is going to be 0
+                    double distanceToStop = -1;
                     if(routes.get(rIndex).isStopInRoute(nodeStops.get(sIndex))){
                         distanceToStop = 0;
-                    }*/
+                    }
                     //search for routeID in noGoRouteIDs
                     boolean checkRoute = true;
                     for(String searchID : noGoRouteIDs){
@@ -132,8 +150,12 @@ public class BestPath {
                         newNoGoRouteIDs.add(routes.get(rIndex).getId());
                         newNoGoRouteIDs.addAll(noGoRouteIDs);
 
-                        Commute newCommute = new Commute();
-                        newCommute.setSteps(commute.getSteps());
+                        Commute newCommute = new Commute(actualFrom, actualTo);
+                        List<Commute.Step> oldSteps = commute.getSteps();
+                        if(oldSteps.get(oldSteps.size() - 1).getStepType() == Commute.Step.TYPE_MATATU){
+                            oldSteps.get(oldSteps.size() - 1).setDestination(nodeStops.get(sIndex));
+                        }
+                        newCommute.setSteps(oldSteps);
                         if(distanceToStop > 0){
                             Commute.Step walkingStep = new Commute.Step(Commute.Step.TYPE_WALKING);
                             walkingStep.setStart(nodeStops.get(sIndex));
@@ -141,6 +163,7 @@ public class BestPath {
                             newCommute.addStep(walkingStep);
                         }
                         Commute.Step matatuStep = new Commute.Step(Commute.Step.TYPE_MATATU);
+                        matatuStep.setStart(routes.get(rIndex).getClosestStop(nodeStops.get(sIndex)));
                         matatuStep.setRoute(routes.get(rIndex));
                         newCommute.addStep(matatuStep);
 
