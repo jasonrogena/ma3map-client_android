@@ -672,6 +672,7 @@ public class Map extends Activity
                     SearchRoutesTasker.this.cancel(true);
                 }
             });
+            progressDialog.setCancelable(false);
         }
 
         @Override
@@ -758,9 +759,9 @@ public class Map extends Activity
                         else if(currCommute.getSteps().get(j).getStepType() == Commute.Step.TYPE_MATATU){
                             Log.d(TAG, "  step "+j+" is using route '"+currCommute.getSteps().get(j).getRoute().getLongName()+"("+currCommute.getSteps().get(j).getRoute().getShortName()+")'");
                             if(currCommute.getSteps().get(j).getStart() != null)
-                                Log.d(TAG, "    from "+currCommute.getSteps().get(j).getStart().getName());
+                                Log.d(TAG, "    from "+currCommute.getSteps().get(j).getStart().getName()+" "+currCommute.getSteps().get(j).getStart().getLat()+","+currCommute.getSteps().get(j).getStart().getLon());
                             if(currCommute.getSteps().get(j).getDestination() != null)
-                                Log.d(TAG, "    to "+currCommute.getSteps().get(j).getDestination().getName());
+                                Log.d(TAG, "    to "+currCommute.getSteps().get(j).getDestination().getName()+" "+currCommute.getSteps().get(j).getDestination().getLat()+","+currCommute.getSteps().get(j).getDestination().getLon());
                         }
                     }
                     Log.d(TAG, "------------------------------------------------------");
@@ -817,6 +818,7 @@ public class Map extends Activity
             progressDialog = new ProgressDialog(Map.this);
             progressDialog.setMessage("Getting cached route data");
             progressDialog.setIndeterminate(false);
+            progressDialog.setCancelable(false);
             progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
             progressDialog.show();
         }

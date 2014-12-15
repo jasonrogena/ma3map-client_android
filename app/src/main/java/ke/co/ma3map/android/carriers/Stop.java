@@ -128,6 +128,13 @@ public class Stop implements Parcelable{
         return new LatLng(Double.parseDouble(lat), Double.parseDouble(lon));
     }
 
+    public boolean equalTo(Stop comparison){
+        if(comparison.getLat().equals(lat) && comparison.getLon().equals(lon)){
+            return true;
+        }
+        return false;
+    }
+
     @Override
     public int describeContents() {
         return 0;

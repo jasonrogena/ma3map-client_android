@@ -143,6 +143,12 @@ public class BestPath {
                             break;
                         }
                     }
+
+                    //check if nodeStops(sIndex) is also starting point for last node
+                    Stop startForLastNode = commute.getSteps().get(commute.getSteps().size() - 1).getStart();
+                    if(startForLastNode.equals(nodeStops.get(sIndex))){
+                        checkRoute = false;
+                    }
                     if (checkRoute == true
                             && distanceToStop != -1 && distanceToStop < MAX_WALKING_DISTANCE){
                         Log.d(TAG, "** Checking route with index = "+rIndex+" of "+routes.size());
