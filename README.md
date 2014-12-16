@@ -1,9 +1,6 @@
 # ma3map [![Build Status](https://travis-ci.org/ma3map/ma3map-client_android.svg?branch=master)](https://travis-ci.org/ma3map/ma3map-client_android)
 
-This is my attempt in putting [Nairobi matatu transit route data](http://www.gtfs-data-exchange.com/agency/university-of-nairobi-c4dlab/) by [Digital Matatus](http://www.digitalmatatus.com/) to good use.
-
-Server-side code for the project resides [here](https://github.com/jasonrogena/ma3map-server).
-
+ma3map is a [matatu](http://en.wikipedia.org/wiki/Matatu) transit application for Nairobi. It uses GTFS data collected by University of Nairobi's C4DLab available [here](http://www.gtfs-data-exchange.com/agency/university-of-nairobi-c4dlab/). For more information on the GTFS data refer to [Digital Matatus' website](http://www.digitalmatatus.com/). Visit ma3map's [GitHub Homepage](https://www.github.com/ma3map) for the entire codebase.
 
 ## Android Client
 
