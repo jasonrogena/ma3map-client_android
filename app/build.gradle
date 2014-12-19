@@ -14,12 +14,10 @@ android {
 
     signingConfigs {
         release {
-            if(System.getenv("RELEASE_STORE_FILE") != null){
-                storeFile file(new File(System.getenv("RELEASE_STORE_FILE")));
-                storePassword System.getenv("RELEASE_STORE_PW");
-                keyAlias System.getenv("RELEASE_KEY_ALIAS");
-                keyPassword System.getenv("RELEASE_KEY_PW");
-            }
+            storeFile file(new File(System.getenv("RELEASE_STORE_FILE")));
+            storePassword System.getenv("RELEASE_STORE_PW");
+            keyAlias System.getenv("RELEASE_KEY_ALIAS");
+            keyPassword System.getenv("RELEASE_KEY_PW");
         }
     }
 
@@ -28,7 +26,9 @@ android {
             //runProguard false
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            if(System.getenv("RELEASE_STORE_FILE") != null) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 
