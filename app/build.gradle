@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 21
-    buildToolsVersion '21.0.2'
+    buildToolsVersion '21.1.2'
 
     defaultConfig {
         applicationId "ke.co.ma3map.android"
@@ -25,7 +25,8 @@ android {
 
     buildTypes {
         release {
-            runProguard false
+            //runProguard false
+            minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
         }
@@ -38,7 +39,8 @@ android {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile 'com.google.android.gms:play-services:+'
+    //compile 'com.google.android.gms:play-services:6.5.87'
+    compile 'com.google.android.gms:play-services:6.5.+'
     compile 'com.android.support:appcompat-v7:21.0.+'
     compile 'com.android.support:cardview-v7:21.0.+'
     compile 'com.android.support:recyclerview-v7:21.0.+'

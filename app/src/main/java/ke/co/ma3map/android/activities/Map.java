@@ -36,7 +36,7 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesClient;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.location.LocationClient;
+//import com.google.android.gms.location.LocationClient;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
@@ -44,6 +44,13 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+
+/*from the new PlayServices API*/
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
+
 import com.melnykov.fab.FloatingActionButton;
 
 import java.io.IOException;
@@ -66,9 +73,12 @@ import ke.co.ma3map.android.services.GetRouteData;
 public class Map extends Activity
                  implements GooglePlayServicesClient.ConnectionCallbacks,
                             GoogleApiClient.OnConnectionFailedListener,
+                            GoogleApiClient.ConnectionCallbacks,
+                            LocationListener,
                             View.OnClickListener,
                             GoogleMap.OnMapClickListener,
-                            View.OnFocusChangeListener, Serializable{
+                            View.OnFocusChangeListener,
+                            Serializable{
 
     private final String TAG = "ma3map.Map";
 
@@ -85,7 +95,10 @@ public class Map extends Activity
     private int mode;
     private int pin;
     private GoogleMap googleMap;
-    private LocationClient locationClient;
+    //private LocationClient locationClient;
+    private GoogleApiClient googleApiClient;
+    private LocationRequest locationRequest;
+    private Location lastLocation;
 
     private LinearLayout interactionLL;
     private RelativeLayout routeSelectionRL;
@@ -222,7 +235,13 @@ public class Map extends Activity
         googleMap.getUiSettings().setZoomControlsEnabled(false);
         googleMap.setOnMapClickListener(this);
 
-        locationClient = new LocationClient(this, this, this);
+        //locationClient = new LocationClient(this, this, this);
+        lastLocation = null;
+        googleApiClient = new GoogleApiClient.Builder(this)
+                .addApi(LocationServices.API)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .build();
 
         interactionLL.setY(getWindowHeight());
 
@@ -262,9 +281,11 @@ public class Map extends Activity
     protected void onResume() {
         super.onResume();
 
-        if(!locationClient.isConnected()){
+        /*if(!locationClient.isConnected()){
             locationClient.connect();
-        }
+        }*/
+
+        googleApiClient.connect();
 
         //register broadcast receivers
         LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
@@ -279,7 +300,8 @@ public class Map extends Activity
     protected void onPause(){
         super.onPause();
 
-        locationClient.disconnect();
+        //locationClient.disconnect();
+        googleApiClient.disconnect();
 
         //unregister broadcast receivers
         LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
@@ -291,10 +313,10 @@ public class Map extends Activity
      * Should be run after resources initialized i.e. in onResume()
      */
     private void zoomInOnLocation(){
-        Location myLocation = locationClient.getLastLocation();
+        //Location myLocation = locationClient.getLastLocation();
 
-        if(myLocation != null){
-            LatLng myLatLng = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
+        if(lastLocation != null){
+            LatLng myLatLng = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
             googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myLatLng, DEFAULT_ZOOM));
             Log.d(TAG, "Zoomed in on user's position");
         }
@@ -305,6 +327,13 @@ public class Map extends Activity
 
     @Override
     public void onConnected(Bundle bundle) {
+        locationRequest = LocationRequest.create();
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        locationRequest.setInterval(1000); // Update location every second
+
+        LocationServices.FusedLocationApi.requestLocationUpdates(
+                googleApiClient, locationRequest, this);
+
         zoomInOnLocation();
     }
 
@@ -316,6 +345,16 @@ public class Map extends Activity
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
 
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+        Log.i(TAG, "GoogleApiClient connection has been suspend");
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        this.lastLocation = location;
     }
 
     /**
