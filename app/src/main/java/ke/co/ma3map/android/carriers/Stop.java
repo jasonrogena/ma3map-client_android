@@ -8,6 +8,8 @@ import com.google.android.gms.maps.model.LatLng;
 
 import org.json.JSONException;
 
+import java.util.Comparator;
+
 import ke.co.ma3map.android.helpers.Database;
 import ke.co.ma3map.android.helpers.JSONObject;
 
@@ -88,7 +90,7 @@ public class Stop implements Parcelable{
      */
     public double getDistance(LatLng point){
         final int earthRadius = 6371;
-        LatLng stopLocation = new LatLng(Double.parseDouble(lat), Double.parseDouble(lon));
+        LatLng stopLocation = getLatLng();
 
         double latDiff = Math.toRadians(stopLocation.latitude - point.latitude);
         double lonDiff = Math.toRadians(stopLocation.longitude - point.longitude);
@@ -120,6 +122,17 @@ public class Stop implements Parcelable{
 
     public String getName(){
         return this.name;
+    }
+
+    public LatLng getLatLng(){
+        return new LatLng(Double.parseDouble(lat), Double.parseDouble(lon));
+    }
+
+    public boolean equalTo(Stop comparison){
+        if(comparison.getLat().equals(lat) && comparison.getLon().equals(lon)){
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -165,4 +178,29 @@ public class Stop implements Parcelable{
             return new Stop[size];
         }
     };
+
+    public static class DistanceComparator implements Comparator<Stop> {
+
+        LatLng reference;
+
+        public DistanceComparator(LatLng reference){
+            this.reference = reference;
+        }
+
+        @Override
+        public int compare(Stop s0, Stop s1) {
+            double d0 = s0.getDistance(reference);
+            double d1 = s1.getDistance(reference);
+
+            if(d0 < d1){
+                return -1;
+            }
+            else if(d0 == d1){
+                return 0;
+            }
+            else {
+                return 1;
+            }
+        }
+    }
 }

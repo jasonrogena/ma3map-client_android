@@ -3,7 +3,10 @@ package ke.co.ma3map.android.carriers;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.google.android.gms.maps.model.LatLng;
+
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -13,21 +16,41 @@ public class Commute implements Parcelable {
 
     public static final String PARCELABLE_KEY = "Commute";
 
-    private List<Step> steps;
-    private double score;
+    private final double SCORE_STEP = 5;//score given for each step in commute
+    private final double SCORE_WALKING = 0.1;//score given for each meter walked
+    private final double SCORE_STOP = 2;//score given for each stop in commute
 
-    public Commute(){
+    private LatLng from;//actual point on map use wants to go from
+    private LatLng to;//actual point on map user want to go to
+    private List<Step> steps;
+
+    public Commute(LatLng from, LatLng to){
+        this.from = from;
+        this.to = to;
         this.steps = new ArrayList<Step>();
-        this.score = 0;
     }
 
+    /*public Commute(){
+        this.from = null;
+        this.to = null;
+        this.steps = new ArrayList<Step>();
+    }*/
+
     public Commute(Parcel source){
-        this();
+        this(null, null);
         readFromParcel(source);
     }
 
-    public double getScore(){
-        return score;
+    public ArrayList<Route> getMatatuRoutes(){
+        ArrayList <Route> matatuRoutes = new ArrayList<Route>();
+
+        for(int index = 0; index < steps.size(); index++){
+            if(steps.get(index).getStepType() == Step.TYPE_MATATU){
+                matatuRoutes.add(steps.get(index).getRoute());
+            }
+        }
+
+        return matatuRoutes;
     }
 
     public Step getStep(int index){
@@ -38,26 +61,55 @@ public class Commute implements Parcelable {
         return steps;
     }
 
+    public void setSteps(List<Step> steps){
+        this.steps = new ArrayList<Step>();
+        for(int index = 0; index < steps.size(); index++){
+            this.steps.add(steps.get(index));
+        }
+    }
+
     public void addStep(Step step){
         this.steps.add(step);
-        calculateScore();
     }
 
-    public long getTotalDuration(){
-        long duration = 0;
-        for(int i = 0; i < steps.size(); i++){
-            duration = duration + steps.get(i).getDuration();
-        }
-        return duration;
-    }
-
-    public void calculateScore(){
-        //TODO: do calculation
+    public double getScore(){
         /*
         1. number of steps (five points per step)
         2. total number of stops in between (two points per stop)
-        3. total distance walked (one point per 100m)
+        3. total distance walked (one point per 10m)
          */
+
+        double stepScore = SCORE_STEP * steps.size();
+        int noStops = 0;
+        double totalDistanceWalked = 0;
+
+        //get distances from actual from and to points
+        if(steps.get(0).getStepType() == Step.TYPE_MATATU){
+            if(steps.get(0).getStart() != null){
+                totalDistanceWalked = totalDistanceWalked + steps.get(0).getStart().getDistance(from);
+            }
+        }
+
+        if(steps.get(steps.size() - 1).getStepType() == Step.TYPE_MATATU){
+            if(steps.get(steps.size() - 1).getDestination() != null){
+                totalDistanceWalked = totalDistanceWalked + steps.get(steps.size() - 1).getDestination().getDistance(to);
+            }
+        }
+
+        for(int index = 0; index < steps.size(); index++){
+            if(steps.get(index).getStepType() == Step.TYPE_WALKING){
+                totalDistanceWalked = totalDistanceWalked + steps.get(index).getStart().getDistance(steps.get(index).getDestination().getLatLng());
+            }
+            else if(steps.get(index).getStepType() == Step.TYPE_MATATU){
+                noStops = noStops + steps.get(index).getRoute().getStops(0).size();
+            }
+        }
+        //double stopScore = noStops * SCORE_STOP;
+        double stopScore = 0;
+        //TODO: get the actual route stops in the commute routes and not just all the stops
+        double walkingScore = SCORE_WALKING * totalDistanceWalked;
+
+        return stepScore + stopScore + walkingScore;
     }
 
     @Override
@@ -68,12 +120,14 @@ public class Commute implements Parcelable {
     @Override
     public void writeToParcel(Parcel parcel, int i) {
         parcel.writeTypedList(steps);
-        parcel.writeDouble(score);
+        parcel.writeParcelable(from, 0);
+        parcel.writeParcelable(to, 0);
     }
 
     public void readFromParcel(Parcel in){
         in.readTypedList(steps, Step.CREATOR);
-        score = in.readDouble();
+        from = in.readParcelable(LatLng.class.getClassLoader());
+        to = in.readParcelable(LatLng.class.getClassLoader());
     }
 
     /**
@@ -106,14 +160,12 @@ public class Commute implements Parcelable {
         private Stop start;
         private Stop destination;//destination stop regardless of whether current step is walking or in a matatu
         private int stepType;
-        private long duration;
 
         public Step(){
             route = null;
             start = null;
             destination = null;
             stepType = -1;
-            duration = -1;
         }
 
         public Step(Parcel source){
@@ -126,7 +178,10 @@ public class Commute implements Parcelable {
             this.route = null;
             this.start = null;
             this.destination = null;
-            this.duration = -1l;
+        }
+
+        public int getStepType(){
+            return stepType;
         }
 
         public Route getRoute() {
@@ -153,14 +208,6 @@ public class Commute implements Parcelable {
             this.destination = destination;
         }
 
-        public long getDuration() {
-            return duration;
-        }
-
-        public void setDuration(long duration) {
-            this.duration = duration;
-        }
-
         @Override
         public int describeContents() {
             return 0;
@@ -172,7 +219,6 @@ public class Commute implements Parcelable {
             parcel.writeParcelable(start, i);
             parcel.writeParcelable(destination, i);
             parcel.writeInt(stepType);
-            parcel.writeLong(duration);
         }
 
         public void readFromParcel(Parcel in){
@@ -180,7 +226,6 @@ public class Commute implements Parcelable {
             start = in.readParcelable(Stop.class.getClassLoader());
             destination = in.readParcelable(Stop.class.getClassLoader());
             stepType = in.readInt();
-            duration = in.readLong();
         }
 
         /**
@@ -199,5 +244,24 @@ public class Commute implements Parcelable {
                 return new Step[size];
             }
         };
+    }
+
+    public static class ScoreComparator implements Comparator<Commute> {
+
+        @Override
+        public int compare(Commute c0, Commute c1) {
+            double s0 = c0.getScore();
+            double s1 = c1.getScore();
+
+            if(s0 < s1){
+                return -1;
+            }
+            else if(s0 == s1){
+                return 0;
+            }
+            else {
+                return 1;
+            }
+        }
     }
 }

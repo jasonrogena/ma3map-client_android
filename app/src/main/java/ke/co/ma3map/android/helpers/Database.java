@@ -57,7 +57,8 @@ public class Database extends SQLiteOpenHelper {
      * @param columns   An array of column names to be fetched in the query
      * @param selection The selection criteria in the form column=value
      * @param selectionArgs You may include ?s in selection, which will be replaced by the values from selectionArgs, in order that they appear in the selection. The values will be bound as Strings.
-     * @param groupBy   A filter declaring how to group rows, formatted as an SQL GROUP BY clause (excluding the GROUP BY itself). Passing null will cause the rows to not be grouped.
+     * @param groupBy   A filter declaring how to gr
+     *                  oup rows, formatted as an SQL GROUP BY clause (excluding the GROUP BY itself). Passing null will cause the rows to not be grouped.
      * @param having    A filter declare which row groups to include in the cursor, if row grouping is being used, formatted as an SQL HAVING clause (excluding the HAVING itself). Passing null will cause all row groups to be included, and is required when row grouping is not being used.
      * @param orderBy   How to order the rows, formatted as an SQL ORDER BY clause (excluding the ORDER BY itself). Passing null will use the default sort order, which may be unordered.
      * @param limit Limits the number of rows returned by the query, formatted as LIMIT clause. Passing null denotes no LIMIT clause.
@@ -66,11 +67,11 @@ public class Database extends SQLiteOpenHelper {
      */
     public String[][] runSelectQuery(SQLiteDatabase db, String table, String[] columns, String selection, String[] selectionArgs, String groupBy, String having, String orderBy, String limit) {
 
-        Log.d(TAG, "About to run select query on " + table + " table");
+        //Log.d(TAG, "About to run select query on " + table + " table");
         Cursor cursor=db.query(table, columns, selection, selectionArgs, groupBy, having, orderBy, limit);
         if(cursor.getCount()!=-1) {
             String[][] result=new String[cursor.getCount()][columns.length];
-            Log.d(TAG, "number of rows " + String.valueOf(cursor.getCount()));
+            //Log.d(TAG, "number of rows " + String.valueOf(cursor.getCount()));
             int c1=0;
             cursor.moveToFirst();
             while(c1<cursor.getCount()) {

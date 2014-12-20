@@ -36,7 +36,7 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesClient;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.location.LocationClient;
+//import com.google.android.gms.location.LocationClient;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
@@ -44,11 +44,20 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+
+/*from the new PlayServices API*/
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
+
 import com.melnykov.fab.FloatingActionButton;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -56,6 +65,7 @@ import ke.co.ma3map.android.R;
 import ke.co.ma3map.android.carriers.Commute;
 import ke.co.ma3map.android.carriers.Route;
 import ke.co.ma3map.android.carriers.Stop;
+import ke.co.ma3map.android.handlers.BestPath;
 import ke.co.ma3map.android.handlers.Data;
 import ke.co.ma3map.android.listeners.ProgressListener;
 import ke.co.ma3map.android.services.GetRouteData;
@@ -63,9 +73,12 @@ import ke.co.ma3map.android.services.GetRouteData;
 public class Map extends Activity
                  implements GooglePlayServicesClient.ConnectionCallbacks,
                             GoogleApiClient.OnConnectionFailedListener,
+                            GoogleApiClient.ConnectionCallbacks,
+                            LocationListener,
                             View.OnClickListener,
                             GoogleMap.OnMapClickListener,
-                            View.OnFocusChangeListener, Serializable{
+                            View.OnFocusChangeListener,
+                            Serializable{
 
     private final String TAG = "ma3map.Map";
 
@@ -82,7 +95,10 @@ public class Map extends Activity
     private int mode;
     private int pin;
     private GoogleMap googleMap;
-    private LocationClient locationClient;
+    //private LocationClient locationClient;
+    private GoogleApiClient googleApiClient;
+    private LocationRequest locationRequest;
+    private Location lastLocation;
 
     private LinearLayout interactionLL;
     private RelativeLayout routeSelectionRL;
@@ -219,7 +235,13 @@ public class Map extends Activity
         googleMap.getUiSettings().setZoomControlsEnabled(false);
         googleMap.setOnMapClickListener(this);
 
-        locationClient = new LocationClient(this, this, this);
+        //locationClient = new LocationClient(this, this, this);
+        lastLocation = null;
+        googleApiClient = new GoogleApiClient.Builder(this)
+                .addApi(LocationServices.API)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .build();
 
         interactionLL.setY(getWindowHeight());
 
@@ -259,9 +281,11 @@ public class Map extends Activity
     protected void onResume() {
         super.onResume();
 
-        if(!locationClient.isConnected()){
+        /*if(!locationClient.isConnected()){
             locationClient.connect();
-        }
+        }*/
+
+        googleApiClient.connect();
 
         //register broadcast receivers
         LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
@@ -276,7 +300,8 @@ public class Map extends Activity
     protected void onPause(){
         super.onPause();
 
-        locationClient.disconnect();
+        //locationClient.disconnect();
+        googleApiClient.disconnect();
 
         //unregister broadcast receivers
         LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
@@ -288,10 +313,10 @@ public class Map extends Activity
      * Should be run after resources initialized i.e. in onResume()
      */
     private void zoomInOnLocation(){
-        Location myLocation = locationClient.getLastLocation();
+        //Location myLocation = locationClient.getLastLocation();
 
-        if(myLocation != null){
-            LatLng myLatLng = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
+        if(lastLocation != null){
+            LatLng myLatLng = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
             googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myLatLng, DEFAULT_ZOOM));
             Log.d(TAG, "Zoomed in on user's position");
         }
@@ -302,6 +327,13 @@ public class Map extends Activity
 
     @Override
     public void onConnected(Bundle bundle) {
+        locationRequest = LocationRequest.create();
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        locationRequest.setInterval(1000); // Update location every second
+
+        LocationServices.FusedLocationApi.requestLocationUpdates(
+                googleApiClient, locationRequest, this);
+
         zoomInOnLocation();
     }
 
@@ -313,6 +345,16 @@ public class Map extends Activity
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
 
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+        Log.i(TAG, "GoogleApiClient connection has been suspend");
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        this.lastLocation = location;
     }
 
     /**
@@ -645,7 +687,7 @@ public class Map extends Activity
         }
     }
 
-    public class SearchRoutesTasker extends AsyncTask<Integer, Integer, List<Commute>>{
+    public class SearchRoutesTasker extends AsyncTask<Integer, Integer, ArrayList<Commute>>{
 
         ProgressDialog progressDialog;
         RoutePoint from;
@@ -669,10 +711,11 @@ public class Map extends Activity
                     SearchRoutesTasker.this.cancel(true);
                 }
             });
+            progressDialog.setCancelable(false);
         }
 
         @Override
-        protected List<Commute> doInBackground(Integer... integers) {
+        protected ArrayList<Commute> doInBackground(Integer... integers) {
             if(to != null && from != null){
                 if(to.getName().length() > 0 && from.getName().length() > 0){
                     //1. check if LatLng for to and from set and set if not
@@ -696,76 +739,39 @@ public class Map extends Activity
                     if(routes != null){
                         //3. get closest stops
                         Log.d(TAG, "Getting all stops");
-                        List<Stop> allStops = new ArrayList<Stop>();
+                        List<Stop> fromStops = new ArrayList<Stop>();
+                        List<Stop> toStops = new ArrayList<Stop>();
 
                         for(int routeIndex = 0; routeIndex < routes.size(); routeIndex++){
                             List<Stop> routeStops = routes.get(routeIndex).getStops(0);
-                            Log.d(TAG, "Route has "+routeStops.size()+" stops");
+                            //Log.d(TAG, "Route has "+routeStops.size()+" stops");
 
                             for(int rStopIndex = 0 ; rStopIndex < routeStops.size(); rStopIndex++){
                                 boolean isThere = false;
-                                Log.d(TAG, "Comparing current stop in route with "+allStops.size()+" other stops");
-                                for(int aStopIndex = 0; aStopIndex < allStops.size(); aStopIndex++){
-                                    if(routeStops.get(rStopIndex).getId() != null)
-                                    Log.d(TAG, "current routeStop ID = " + routeStops.get(rStopIndex).getId());
-                                    else
-                                    Log.d(TAG, "current routeStop ID = null");
-
-                                    if(routeStops.get(rStopIndex).getLat().equals(allStops.get(aStopIndex).getLat())
-                                            && routeStops.get(rStopIndex).getLon().equals(allStops.get(aStopIndex).getLon())){
+                                //Log.d(TAG, "Comparing current stop in route with "+fromStops.size()+" other stops");
+                                for(int aStopIndex = 0; aStopIndex < fromStops.size(); aStopIndex++){
+                                    if(routeStops.get(rStopIndex).getLat().equals(fromStops.get(aStopIndex).getLat())
+                                            && routeStops.get(rStopIndex).getLon().equals(fromStops.get(aStopIndex).getLon())){
                                         isThere = true;
                                         break;
                                     }
                                 }
 
                                 if(isThere == false){
-                                    allStops.add(routeStops.get(rStopIndex));
+                                    fromStops.add(routeStops.get(rStopIndex));
+                                    toStops.add(routeStops.get(rStopIndex));
                                 }
                             }
                         }
 
-                        Log.d(TAG, "Number of stops = "+allStops.size());
+                        Log.d(TAG, "Number of stops = " + fromStops.size());
 
-                        double closestFromStopDistance = -1;
-                        int closestFromStopIndex = -1;
-                        double closestToStopDistance = -1;
-                        int closestToStopIndex = -1;
-
-                        //do distance calculations for all the stops
-                        Log.d(TAG, "Getting closest from and to stops");
-                        for(int stopIndex = 0; stopIndex < allStops.size(); stopIndex++){
-                            Stop currStop = allStops.get(stopIndex);
-
-                            double fromDistance = currStop.getDistance(from.getLatLng());
-                            double toDistance = currStop.getDistance(to.getLatLng());
-
-                            if(closestFromStopDistance == -1 || closestFromStopDistance > fromDistance){
-                                closestFromStopDistance = fromDistance;
-                                closestFromStopIndex = stopIndex;
-                            }
-
-                            if(closestToStopDistance == -1 || closestToStopDistance > toDistance){
-                                closestToStopDistance = toDistance;
-                                closestToStopIndex = stopIndex;
-                            }
-                        }
-
-                        if(closestFromStopIndex != -1){
-                            Log.d(TAG, "distance in metres between from and closest stop = "+allStops.get(closestFromStopIndex).getDistance(from.getLatLng()));
-                            Log.d(TAG, "closest from stop = "+allStops.get(closestFromStopIndex).getName());
-                            Log.d(TAG, "closest from stop lat = "+allStops.get(closestFromStopIndex).getLat());
-                            Log.d(TAG, "closest from stop lon = "+allStops.get(closestFromStopIndex).getLon());
-                        }
-                        else Log.d(TAG, "Unable to get stop close to from");
-                        if(closestToStopIndex != -1){
-                            Log.d(TAG, "distance in metres between destination and closest stop = "+allStops.get(closestToStopIndex).getDistance(to.getLatLng()));
-                            Log.d(TAG, "closest from stop = "+allStops.get(closestToStopIndex).getName());
-                            Log.d(TAG, "closest from stop lat = "+allStops.get(closestToStopIndex).getLat());
-                            Log.d(TAG, "closest from stop lon = "+allStops.get(closestToStopIndex).getLon());
-                        }
-                        else Log.d(TAG, "Unable to get stop close to destination");
+                        Collections.sort(fromStops, new Stop.DistanceComparator(from.getLatLng()));//stop closest to from becomes first
+                        Collections.sort(toStops, new Stop.DistanceComparator(to.getLatLng()));//stop closest to destination becomes first
 
                         //4. determine commutes using closest stops
+                        BestPath bestPath = new BestPath(fromStops.subList(0, BestPath.MAX_FROM_POINTS), from.getLatLng(), toStops.subList(0, BestPath.MAX_TO_POINTS), to.getLatLng(), routes);
+                        return bestPath.getCommutes();
                     }
                     else {
                         message = "Route data not available at the moment";
@@ -776,12 +782,36 @@ public class Map extends Activity
         }
 
         @Override
-        protected void onPostExecute(List<Commute> commutes) {
+        protected void onPostExecute(ArrayList<Commute> commutes) {
             super.onPostExecute(commutes);
 
-            progressDialog.dismiss();
-            if(message != null){
-                Toast.makeText(Map.this, message, Toast.LENGTH_LONG).show();
+            if(commutes != null){
+
+                Log.d(TAG, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+                for(int index = 0; index < commutes.size(); index++){
+                    Log.d(TAG, "Commute with index as "+index+" has score of "+commutes.get(index).getScore());
+                    for(int j = 0; j < commutes.get(index).getSteps().size(); j++){
+                        Commute currCommute = commutes.get(index);
+                        if(currCommute.getSteps().get(j).getStepType() == Commute.Step.TYPE_WALKING){
+                            Log.d(TAG, "  step "+j+" is walking from "+currCommute.getSteps().get(j).getStart().getName()+" to "+currCommute.getSteps().get(j).getDestination().getName());
+                        }
+                        else if(currCommute.getSteps().get(j).getStepType() == Commute.Step.TYPE_MATATU){
+                            Log.d(TAG, "  step "+j+" is using route '"+currCommute.getSteps().get(j).getRoute().getLongName()+"("+currCommute.getSteps().get(j).getRoute().getShortName()+")'");
+                            if(currCommute.getSteps().get(j).getStart() != null)
+                                Log.d(TAG, "    from "+currCommute.getSteps().get(j).getStart().getName()+" "+currCommute.getSteps().get(j).getStart().getLat()+","+currCommute.getSteps().get(j).getStart().getLon());
+                            if(currCommute.getSteps().get(j).getDestination() != null)
+                                Log.d(TAG, "    to "+currCommute.getSteps().get(j).getDestination().getName()+" "+currCommute.getSteps().get(j).getDestination().getLat()+","+currCommute.getSteps().get(j).getDestination().getLon());
+                        }
+                    }
+                    Log.d(TAG, "------------------------------------------------------");
+                }
+
+                Log.d(TAG, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+
+                progressDialog.dismiss();
+                if(message != null){
+                    Toast.makeText(Map.this, message, Toast.LENGTH_LONG).show();
+                }
             }
         }
     }
@@ -827,6 +857,7 @@ public class Map extends Activity
             progressDialog = new ProgressDialog(Map.this);
             progressDialog.setMessage("Getting cached route data");
             progressDialog.setIndeterminate(false);
+            progressDialog.setCancelable(false);
             progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
             progressDialog.show();
         }

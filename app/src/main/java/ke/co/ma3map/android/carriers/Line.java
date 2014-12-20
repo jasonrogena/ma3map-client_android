@@ -4,6 +4,8 @@ import android.database.sqlite.SQLiteDatabase;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.google.android.gms.maps.model.LatLng;
+
 import org.json.JSONException;
 
 import java.util.ArrayList;
@@ -78,6 +80,45 @@ public class Line implements Parcelable {
                 points.add(currPoint);
             }
         }
+    }
+
+    public boolean isStopInLine(Stop stop){
+        for(int index = 0; index < stops.size(); index++){
+            if(stops.get(index).getLat().equals(stop.getLat()) && stops.get(index).getLon().equals(stop.getLon())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public double getDistanceToStop(Stop stop){
+        //first check if stop is in line
+        if(isStopInLine(stop)){
+            return 0;
+        }
+        else {
+            double closest = -1;
+            for(int index = 0; index < stops.size(); index++){
+                double currDistance = stops.get(index).getDistance(stop.getLatLng());
+                if(closest == -1 || currDistance < closest){
+                    closest = currDistance;
+                }
+            }
+            return closest;
+        }
+    }
+
+    public Stop getClosestStop(Stop stop){
+        Stop closestStop = null;
+        double closestDistance = -1;
+        for(int index = 0; index < stops.size(); index++){
+            double currDistance = stops.get(index).getDistance(stop.getLatLng());
+            if(closestDistance == -1 || currDistance < closestDistance){
+                closestStop = stops.get(index);
+            }
+        }
+
+        return closestStop;
     }
 
     public void insertIntoDB(Database database, SQLiteDatabase writableDB, String routeID){
