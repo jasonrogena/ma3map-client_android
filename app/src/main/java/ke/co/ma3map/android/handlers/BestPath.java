@@ -60,9 +60,7 @@ public class BestPath {
                 //ArrayList<Route> currNodes = new ArrayList<Route>();
                 //currNodes.add(fromRoutes.get(index));
                 Commute currCommute = new Commute(actualFrom, actualTo);
-                Commute.Step firstStep = new Commute.Step(Commute.Step.TYPE_MATATU);
-                firstStep.setStart(currFrom);
-                firstStep.setRoute(fromRoutes.get(index));
+                Commute.Step firstStep = new Commute.Step(Commute.Step.TYPE_MATATU, fromRoutes.get(index), currFrom, null);
                 currCommute.addStep(firstStep);
                 Commute resultantBestCommute = getBestCommute(currCommute, noGoRouteIDs);
                 if(resultantBestCommute != null) {
@@ -95,11 +93,10 @@ public class BestPath {
         for(int toIndex = 0; toIndex < to.size(); toIndex++){//still assumes that to stops are ordered in terms of closeness to actual destination
             Stop currTo = to.get(toIndex);
             if(lastNode.isStopInRoute(currTo)){
-                List<Commute.Step> finalSteps = commute.getSteps();
-                if(finalSteps.get(finalSteps.size() - 1).getStepType() == Commute.Step.TYPE_MATATU){
-                    finalSteps.get(finalSteps.size() - 1).setDestination(currTo);
+                Commute.Step tmpStep = commute.getStep(commute.getSteps().size() - 1);
+                if(tmpStep.getStepType() == Commute.Step.TYPE_MATATU){
+                    commute.setStep(commute.getSteps().size() - 1, new Commute.Step(tmpStep.getStepType(), tmpStep.getRoute(), tmpStep.getStart(), currTo));
                 }
-                commute.setSteps(finalSteps);
                 toIsInRoute = true;
                 break;
             }
@@ -129,16 +126,18 @@ public class BestPath {
             List<Stop> nodeStops = lastNode.getStops(0);
             Log.d(TAG, "Last node has "+nodeStops.size()+" stops");
             for (int rIndex = 0; rIndex < routes.size(); rIndex++) {
+                final Route currReferenceRoute = routes.get(rIndex);
                 for(int sIndex = 0; sIndex < nodeStops.size(); sIndex++) {
-                    //double distanceToStop = routes.get(rIndex).getDistanceToStop(nodeStops.get(sIndex));//if stop is in route, distance is going to be 0
+                    final Stop currReferenceStop = nodeStops.get(sIndex);
+                    //double distanceToStop = currReferenceRoute.getDistanceToStop(nodeStops.get(sIndex));//if stop is in route, distance is going to be 0
                     double distanceToStop = -1;
-                    if(routes.get(rIndex).isStopInRoute(nodeStops.get(sIndex))){
+                    if(currReferenceRoute.isStopInRoute(currReferenceStop)){
                         distanceToStop = 0;
                     }
                     //search for routeID in noGoRouteIDs
                     boolean checkRoute = true;
-                    for(String searchID : noGoRouteIDs){
-                        if(searchID.equals(routes.get(rIndex).getId())){
+                    for(String searchID : noGoRouteIDs){//TODO: not sure if this works
+                        if(searchID.equals(currReferenceRoute.getId())){
                             checkRoute = false;
                             break;
                         }
@@ -146,31 +145,32 @@ public class BestPath {
 
                     //check if nodeStops(sIndex) is also starting point for last node
                     Stop startForLastNode = commute.getSteps().get(commute.getSteps().size() - 1).getStart();
-                    if(startForLastNode.equals(nodeStops.get(sIndex))){
+                    if(startForLastNode.equals(currReferenceStop)){
                         checkRoute = false;
                     }
                     if (checkRoute == true
-                            && distanceToStop != -1 && distanceToStop < MAX_WALKING_DISTANCE){
+                            && distanceToStop != -1 && distanceToStop < MAX_WALKING_DISTANCE) {
                         Log.d(TAG, "** Checking route with index = "+rIndex+" of "+routes.size());
                         List<String> newNoGoRouteIDs = new ArrayList<String>();
-                        newNoGoRouteIDs.add(routes.get(rIndex).getId());
+                        newNoGoRouteIDs.add(currReferenceRoute.getId());
                         newNoGoRouteIDs.addAll(noGoRouteIDs);
 
                         Commute newCommute = new Commute(actualFrom, actualTo);
-                        List<Commute.Step> oldSteps = commute.getSteps();
-                        if(oldSteps.get(oldSteps.size() - 1).getStepType() == Commute.Step.TYPE_MATATU){
-                            oldSteps.get(oldSteps.size() - 1).setDestination(nodeStops.get(sIndex));
+                        newCommute.setSteps(commute.getSteps());
+                        Commute.Step tmpStep = commute.getStep(newCommute.getSteps().size() - 1);
+                        if(tmpStep.getStepType() == Commute.Step.TYPE_MATATU){
+                            newCommute.setStep(newCommute.getSteps().size() - 1, new Commute.Step(tmpStep.getStepType(), tmpStep.getRoute(), tmpStep.getStart(), currReferenceStop));
                         }
-                        newCommute.setSteps(oldSteps);
+
+                        //add walking step if necessary
                         if(distanceToStop > 0){
-                            Commute.Step walkingStep = new Commute.Step(Commute.Step.TYPE_WALKING);
-                            walkingStep.setStart(nodeStops.get(sIndex));
-                            walkingStep.setDestination(routes.get(rIndex).getClosestStop(nodeStops.get(sIndex)));
+                            Commute.Step walkingStep = new Commute.Step(Commute.Step.TYPE_WALKING, null, currReferenceStop, currReferenceRoute.getClosestStop(currReferenceStop));
                             newCommute.addStep(walkingStep);
                         }
-                        Commute.Step matatuStep = new Commute.Step(Commute.Step.TYPE_MATATU);
-                        matatuStep.setStart(routes.get(rIndex).getClosestStop(nodeStops.get(sIndex)));
-                        matatuStep.setRoute(routes.get(rIndex));
+                        Commute.Step matatuStep = new Commute.Step(Commute.Step.TYPE_MATATU, currReferenceRoute, currReferenceStop, null);
+                        //matatuStep.setStart(currReferenceRoute.getClosestStop(nodeStops.get(sIndex)));
+                        //matatuStep.setStart(currReferenceStop);//TODO: switch this back to the original once major bugs ironed out
+                        //matatuStep.setRoute(currReferenceRoute);
                         newCommute.addStep(matatuStep);
 
                         Commute currBestCommute = getBestCommute(newCommute, newNoGoRouteIDs);

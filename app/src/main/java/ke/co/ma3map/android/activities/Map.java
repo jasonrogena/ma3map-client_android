@@ -329,7 +329,7 @@ public class Map extends Activity
     public void onConnected(Bundle bundle) {
         locationRequest = LocationRequest.create();
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        locationRequest.setInterval(1000); // Update location every second
+        locationRequest.setInterval(10000); //Update location every 10 seconds
 
         LocationServices.FusedLocationApi.requestLocationUpdates(
                 googleApiClient, locationRequest, this);
@@ -354,7 +354,15 @@ public class Map extends Activity
 
     @Override
     public void onLocationChanged(Location location) {
+        boolean zoomIn = false;
+        if(this.lastLocation== null){
+            zoomIn = true;
+        }
         this.lastLocation = location;
+
+        if(zoomIn){
+            zoomInOnLocation();
+        }
     }
 
     /**
@@ -788,19 +796,19 @@ public class Map extends Activity
             if(commutes != null){
 
                 Log.d(TAG, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
-                for(int index = 0; index < commutes.size(); index++){
-                    Log.d(TAG, "Commute with index as "+index+" has score of "+commutes.get(index).getScore());
-                    for(int j = 0; j < commutes.get(index).getSteps().size(); j++){
-                        Commute currCommute = commutes.get(index);
-                        if(currCommute.getSteps().get(j).getStepType() == Commute.Step.TYPE_WALKING){
-                            Log.d(TAG, "  step "+j+" is walking from "+currCommute.getSteps().get(j).getStart().getName()+" to "+currCommute.getSteps().get(j).getDestination().getName());
+                for(int commuteIndex = 0; commuteIndex < commutes.size(); commuteIndex++){
+                    Log.d(TAG, "Commute with index as "+commuteIndex+" has score of "+commutes.get(commuteIndex).getScore());
+                    for(int stepIndex = 0; stepIndex < commutes.get(commuteIndex).getSteps().size(); stepIndex++){
+                        Commute currCommute = commutes.get(commuteIndex);
+                        if(currCommute.getSteps().get(stepIndex).getStepType() == Commute.Step.TYPE_WALKING){
+                            Log.d(TAG, "  step "+stepIndex+" is walking from "+currCommute.getSteps().get(stepIndex).getStart().getName()+" to "+currCommute.getSteps().get(stepIndex).getDestination().getName());
                         }
-                        else if(currCommute.getSteps().get(j).getStepType() == Commute.Step.TYPE_MATATU){
-                            Log.d(TAG, "  step "+j+" is using route '"+currCommute.getSteps().get(j).getRoute().getLongName()+"("+currCommute.getSteps().get(j).getRoute().getShortName()+")'");
-                            if(currCommute.getSteps().get(j).getStart() != null)
-                                Log.d(TAG, "    from "+currCommute.getSteps().get(j).getStart().getName()+" "+currCommute.getSteps().get(j).getStart().getLat()+","+currCommute.getSteps().get(j).getStart().getLon());
-                            if(currCommute.getSteps().get(j).getDestination() != null)
-                                Log.d(TAG, "    to "+currCommute.getSteps().get(j).getDestination().getName()+" "+currCommute.getSteps().get(j).getDestination().getLat()+","+currCommute.getSteps().get(j).getDestination().getLon());
+                        else if(currCommute.getSteps().get(stepIndex).getStepType() == Commute.Step.TYPE_MATATU){
+                            Log.d(TAG, "  step "+stepIndex+" is using route '"+currCommute.getSteps().get(stepIndex).getRoute().getLongName()+"("+currCommute.getSteps().get(stepIndex).getRoute().getShortName()+")'");
+                            if(currCommute.getSteps().get(stepIndex).getStart() != null)
+                                Log.d(TAG, "    from "+currCommute.getSteps().get(stepIndex).getStart().getName()+" "+currCommute.getSteps().get(stepIndex).getStart().getLat()+","+currCommute.getSteps().get(stepIndex).getStart().getLon());
+                            if(currCommute.getSteps().get(stepIndex).getDestination() != null)
+                                Log.d(TAG, "    to "+currCommute.getSteps().get(stepIndex).getDestination().getName()+" "+currCommute.getSteps().get(stepIndex).getDestination().getLat()+","+currCommute.getSteps().get(stepIndex).getDestination().getLon());
                         }
                     }
                     Log.d(TAG, "------------------------------------------------------");

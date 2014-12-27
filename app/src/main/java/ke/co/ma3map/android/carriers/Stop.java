@@ -72,6 +72,38 @@ public class Stop implements Parcelable{
         }
     }
 
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
+    }
+
+    public void setDesc(String desc) {
+        this.desc = desc;
+    }
+
+    public void setLat(String lat) {
+        this.lat = lat;
+    }
+
+    public void setLon(String lon) {
+        this.lon = lon;
+    }
+
+    public void setLocationType(int locationType) {
+        this.locationType = locationType;
+    }
+
+    public void setParentStation(String parentStation) {
+        this.parentStation = parentStation;
+    }
+
     public void insertIntoDB(Database database, SQLiteDatabase writableDB, String lineID){
         String[] values = {id, name, code, desc, lat, lon, String.valueOf(locationType), parentStation};
 
@@ -124,12 +156,28 @@ public class Stop implements Parcelable{
         return this.name;
     }
 
+    public String getCode() {
+        return code;
+    }
+
+    public String getDesc() {
+        return desc;
+    }
+
+    public int getLocationType() {
+        return locationType;
+    }
+
+    public String getParentStation() {
+        return parentStation;
+    }
+
     public LatLng getLatLng(){
         return new LatLng(Double.parseDouble(lat), Double.parseDouble(lon));
     }
 
-    public boolean equalTo(Stop comparison){
-        if(comparison.getLat().equals(lat) && comparison.getLon().equals(lon)){
+    public boolean equals(Stop comparison){
+        if(comparison.getLat().equals(lat) && comparison.getLon().equals(lon) && comparison.getName().equals(name)){
             return true;
         }
         return false;

@@ -2,6 +2,7 @@ package ke.co.ma3map.android.carriers;
 
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.util.Log;
 
 import com.google.android.gms.maps.model.LatLng;
 
@@ -15,6 +16,7 @@ import java.util.List;
 public class Commute implements Parcelable {
 
     public static final String PARCELABLE_KEY = "Commute";
+    private static final String TAG = "ma3map.Commute";
 
     private final double SCORE_STEP = 5;//score given for each step in commute
     private final double SCORE_WALKING = 0.1;//score given for each meter walked
@@ -64,7 +66,16 @@ public class Commute implements Parcelable {
     public void setSteps(List<Step> steps){
         this.steps = new ArrayList<Step>();
         for(int index = 0; index < steps.size(); index++){
-            this.steps.add(steps.get(index));
+            this.steps.add(new Step(steps.get(index).getStepType(), steps.get(index).getRoute(), steps.get(index).getStart(), steps.get(index).getDestination()));
+        }
+    }
+
+    public void setStep(int index, Step step){
+        if(index < steps.size() && index >= 0){
+            steps.set(index, step);
+        }
+        else {
+            Log.e(TAG, "Unable to set step to index "+index+" because index is out of bounds");
         }
     }
 
@@ -180,6 +191,13 @@ public class Commute implements Parcelable {
             this.destination = null;
         }
 
+        public Step(int stepType, Route route, Stop start, Stop destination){
+            this.stepType = stepType;
+            this.route = route;
+            this.start = start;
+            this.destination = destination;
+        }
+
         public int getStepType(){
             return stepType;
         }
@@ -188,24 +206,12 @@ public class Commute implements Parcelable {
             return route;
         }
 
-        public void setRoute(Route route) {
-            this.route = route;
-        }
-
         public Stop getStart() {
             return start;
         }
 
-        public void setStart(Stop start) {
-            this.start = start;
-        }
-
         public Stop getDestination() {
             return destination;
-        }
-
-        public void setDestination(Stop destination) {
-            this.destination = destination;
         }
 
         @Override
