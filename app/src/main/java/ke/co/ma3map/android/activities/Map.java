@@ -16,6 +16,7 @@ import android.location.Location;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -85,7 +86,7 @@ public class Map extends Activity
 
     private final int DEFAULT_ZOOM = 10;
     private final long I_LAYOUT_TRANS_TIME = 600;//the time in milliseconds it will take to hide/show the interaction layout
-    private final double I_LAYOUT_HIGHT_RATIO = 0.9;//the ratio of height of the interactionLL to the activityHeight
+    private final double I_LAYOUT_HIGHT_RATIO = 1;//the ratio of height of the interactionLL to the activityHeight
     private final int MODE_MAP = 0;
     private final int MODE_DROP_PIN = 1;
     private final int MODE_NAVIGATE = 2;
@@ -155,7 +156,10 @@ public class Map extends Activity
 
         routeSelectionRL = (RelativeLayout)this.findViewById(R.id.route_selection_rl);
 
-        //commutesRV = (RecyclerView)this.findViewById(R.id.commutes_rv);
+        commutesRV = (RecyclerView)this.findViewById(R.id.commutes_rv);
+        LinearLayoutManager commutesRVLLM = new LinearLayoutManager(Map.this);
+        commutesRVLLM.setOrientation(LinearLayoutManager.VERTICAL);
+        commutesRV.setLayoutManager(commutesRVLLM);
 
         fromACTV = (AutoCompleteTextView)this.findViewById(R.id.from_actv);
         fromACTV.setOnClickListener(this);
@@ -828,7 +832,8 @@ public class Map extends Activity
          * This method adds commutes in the Commute Recycler View
          */
         public void showCommutes(){
-
+            Commute.RecyclerAdapter recyclerAdapter = new Commute.RecyclerAdapter(Map.this, commutes);
+            commutesRV.setAdapter(recyclerAdapter);
         }
 
         @Override

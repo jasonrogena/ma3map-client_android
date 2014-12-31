@@ -15,19 +15,20 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
+        android:paddingBottom="25dp"
         android:background="#eeeeee"
         android:elevation="1dp">
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="200dp">
+            android:layout_height="200dp"
+            android:background="@color/primary"
+            android:elevation="2dp">
             <RelativeLayout
                 android:id="@+id/route_selection_rl"
                 android:layout_width="match_parent"
                 android:layout_height="150dp"
                 android:paddingTop="20dp"
-                android:paddingBottom="20dp"
-                android:background="@color/primary"
-                android:elevation="2dp">
+                android:paddingBottom="20dp">
                 <ImageView
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
@@ -146,13 +147,13 @@
                 android:padding="30dp"
                 android:elevation="2dp"/>
         </FrameLayout>
-
+        <android.support.v7.widget.RecyclerView
+            android:id="@+id/commutes_rv"
+            android:scrollbars="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
     </LinearLayout>
-    <!--android.support.v7.widget.RecyclerView
-        android:id="@+id/commutes_rv"
-        android:scrollbars="vertical"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"/-->
+
     <com.melnykov.fab.FloatingActionButton
         android:id="@+id/navigate_fab"
         android:layout_width="wrap_content"

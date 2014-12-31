@@ -1,5 +1,6 @@
 package ke.co.ma3map.android.carriers;
 
+import android.content.Context;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.v7.widget.RecyclerView;
@@ -14,6 +15,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import ke.co.ma3map.android.handlers.Data;
+import ke.co.ma3map.android.views.CommuteRecyclerView;
 
 /**
  * Created by jason on 28/10/14.
@@ -24,9 +26,9 @@ public class Commute implements Parcelable {
     private static final String TAG = "ma3map.Commute";
 
     private final double SCORE_STEP = 10;//score given for each step in commute
-    private final double SCORE_WALKING = 0.01;//score given for each meter walked
+    private final double SCORE_WALKING = 0.1;//score given for each meter walked
     private final double SCORE_STOP = 2;//score given for each stop in commute
-    private final double SPEED_WALKING = 1.38889;//average walking speed in m/s
+    private final double SPEED_WALKING = 2.77778;//average walking speed in m/s
     private final double SPEED_MATATU = 5.55556;//average value in m/s that can be used to estimate how long it would take a matatu to cover some distance
 
     private LatLng from;//actual point on map use wants to go from
@@ -77,6 +79,10 @@ public class Commute implements Parcelable {
         for(int index = 0; index < steps.size(); index++){
             this.steps.add(new Step(steps.get(index).getStepType(), steps.get(index).getRoute(), steps.get(index).getStart(), steps.get(index).getDestination()));
         }
+    }
+
+    public double getTime(){
+        return time;
     }
 
     public void setStep(int index, Step step){
@@ -140,8 +146,26 @@ public class Commute implements Parcelable {
         for(int stepIndex = 0; stepIndex < steps.size(); stepIndex++){
             LatLngPair currLatLngPair = new LatLngPair(steps.get(stepIndex).getStart().getLatLng(), steps.get(stepIndex).getDestination().getLatLng(), -1);
 
+            LatLngPair startLatLngPair = null;
+            LatLngPair destinationLatLngPair = null;
             boolean add = true;
+            boolean addStart = false;
+            boolean addDestination = false;
+            if(stepIndex == 0){
+                startLatLngPair = new LatLngPair(from, steps.get(stepIndex).getStart().getLatLng(), -1);
+                addStart = true;
+            }
+            if(stepIndex == steps.size() - 1){
+                destinationLatLngPair = new LatLngPair(steps.get(stepIndex).getDestination().getLatLng(), to, -1);
+                addDestination = true;
+            }
             for(int lIndex = 0; lIndex < currLatLngPairs.size(); lIndex++){
+                if(startLatLngPair != null && currLatLngPairs.get(lIndex).equals(startLatLngPair)){
+                    addStart = false;
+                }
+                if(destinationLatLngPair != null && currLatLngPairs.get(lIndex).equals(destinationLatLngPair)){
+                    addDestination = false;
+                }
                 if(currLatLngPairs.get(lIndex).equals(currLatLngPair)){
                     add = false;
                     break;
@@ -150,6 +174,12 @@ public class Commute implements Parcelable {
 
             if(add == true){
                 currLatLngPairs.add(currLatLngPair);
+            }
+            if(addStart == true && startLatLngPair != null){
+                currLatLngPairs.add(startLatLngPair);
+            }
+            if(addDestination == true && destinationLatLngPair != null){
+                currLatLngPairs.add(destinationLatLngPair);
             }
         }
 
@@ -165,6 +195,42 @@ public class Commute implements Parcelable {
     public void setCommuteTime(ArrayList<LatLngPair> latLngPairs){
         time = -1;
         double totalTime = 0;
+
+        //get distance between start and first step
+        LatLngPair startLatLngPair = new LatLngPair(from, steps.get(0).getStart().getLatLng(), -1);
+        double startDistance = -1;
+        for(int lIndex = 0; lIndex < latLngPairs.size(); lIndex++){
+            if(latLngPairs.get(lIndex).equals(startLatLngPair)){
+                startDistance = latLngPairs.get(lIndex).getDistance();
+                break;
+            }
+        }
+        if(startDistance == -1){
+            return;
+        }
+        else {
+            Log.d(TAG, "Start distance is "+startDistance);
+            totalTime = totalTime + (startDistance/SPEED_WALKING);
+        }
+
+        //get distance between last step and destination
+        LatLngPair destinationLatLngPair = new LatLngPair(steps.get(steps.size() - 1).getDestination().getLatLng(), to, -1);
+        double destinationDistance = -1;
+        for(int lIndex = 0; lIndex < latLngPairs.size(); lIndex++){
+            if(latLngPairs.get(lIndex).equals(destinationLatLngPair)){
+                destinationDistance = latLngPairs.get(lIndex).getDistance();
+                break;
+            }
+        }
+        if(destinationDistance == -1){
+            return;
+        }
+        else {
+            Log.d(TAG, "Destination distance is "+destinationDistance);
+            totalTime = totalTime + (destinationDistance/SPEED_WALKING);
+        }
+
+        //get distances in between steps
         for(int stepIndex = 0; stepIndex < steps.size(); stepIndex++){
             LatLngPair stepLatLngPair = new LatLngPair(steps.get(stepIndex).getStart().getLatLng(), steps.get(stepIndex).getDestination().getLatLng(), -1);
             double distance = -1;
@@ -378,25 +444,40 @@ public class Commute implements Parcelable {
      */
     public static class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHolder> {
 
+        private final ArrayList<Commute> commutes;
+        private final Context context;
+
+        public RecyclerAdapter(Context context, ArrayList<Commute> commutes){
+            this.context = context;
+            this.commutes = commutes;
+        }
+
         @Override
         public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            return null;
+            CommuteRecyclerView commuteRecyclerView = new CommuteRecyclerView(context);
+            return new ViewHolder(commuteRecyclerView);
         }
 
         @Override
         public void onBindViewHolder(ViewHolder holder, int position) {
-
+            holder.setCommute(commutes.get(position));
         }
 
         @Override
         public int getItemCount() {
-            return 0;
+            return commutes.size();
         }
 
         public static class ViewHolder extends RecyclerView.ViewHolder {
 
-            public ViewHolder(View itemView) {
-                super(itemView);
+            private CommuteRecyclerView commuteRecyclerView;
+            public ViewHolder(CommuteRecyclerView commuteRecyclerView) {
+                super(commuteRecyclerView);
+                this.commuteRecyclerView = commuteRecyclerView;
+            }
+
+            public void setCommute(Commute commute){
+                commuteRecyclerView.setCommute(commute);
             }
         }
     }
