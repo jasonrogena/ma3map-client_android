@@ -2,13 +2,18 @@ package ke.co.ma3map.android.carriers;
 
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.view.View;
+import android.view.ViewGroup;
 
 import com.google.android.gms.maps.model.LatLng;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+
+import ke.co.ma3map.android.handlers.Data;
 
 /**
  * Created by jason on 28/10/14.
@@ -18,18 +23,22 @@ public class Commute implements Parcelable {
     public static final String PARCELABLE_KEY = "Commute";
     private static final String TAG = "ma3map.Commute";
 
-    private final double SCORE_STEP = 5;//score given for each step in commute
-    private final double SCORE_WALKING = 0.1;//score given for each meter walked
+    private final double SCORE_STEP = 10;//score given for each step in commute
+    private final double SCORE_WALKING = 0.01;//score given for each meter walked
     private final double SCORE_STOP = 2;//score given for each stop in commute
+    private final double SPEED_WALKING = 1.38889;//average walking speed in m/s
+    private final double SPEED_MATATU = 5.55556;//average value in m/s that can be used to estimate how long it would take a matatu to cover some distance
 
     private LatLng from;//actual point on map use wants to go from
     private LatLng to;//actual point on map user want to go to
     private List<Step> steps;
+    private double time;
 
     public Commute(LatLng from, LatLng to){
         this.from = from;
         this.to = to;
         this.steps = new ArrayList<Step>();
+        time = -1;
     }
 
     /*public Commute(){
@@ -123,6 +132,66 @@ public class Commute implements Parcelable {
         return stepScore + stopScore + walkingScore;
     }
 
+    public ArrayList<LatLngPair> getStepLatLngPairs(ArrayList<LatLngPair> currLatLngPairs){
+        if(currLatLngPairs == null){
+            currLatLngPairs = new ArrayList<LatLngPair>();
+        }
+
+        for(int stepIndex = 0; stepIndex < steps.size(); stepIndex++){
+            LatLngPair currLatLngPair = new LatLngPair(steps.get(stepIndex).getStart().getLatLng(), steps.get(stepIndex).getDestination().getLatLng(), -1);
+
+            boolean add = true;
+            for(int lIndex = 0; lIndex < currLatLngPairs.size(); lIndex++){
+                if(currLatLngPairs.get(lIndex).equals(currLatLngPair)){
+                    add = false;
+                    break;
+                }
+            }
+
+            if(add == true){
+                currLatLngPairs.add(currLatLngPair);
+            }
+        }
+
+        return currLatLngPairs;
+    }
+
+    /**
+     * Please run this method in an thread running asynchronously from the main thread
+     * This method calculates the time it would take for the commute.
+     *
+     * @param latLngPairs   Dictionary of LatLngPairs where you can get distances for all the steps
+     */
+    public void setCommuteTime(ArrayList<LatLngPair> latLngPairs){
+        time = -1;
+        double totalTime = 0;
+        for(int stepIndex = 0; stepIndex < steps.size(); stepIndex++){
+            LatLngPair stepLatLngPair = new LatLngPair(steps.get(stepIndex).getStart().getLatLng(), steps.get(stepIndex).getDestination().getLatLng(), -1);
+            double distance = -1;
+            for(int lIndex = 0; lIndex < latLngPairs.size(); lIndex++){
+                if(latLngPairs.get(lIndex).equals(stepLatLngPair)){
+                    Log.d(TAG, latLngPairs.get(lIndex).getPointA()+" : "+latLngPairs.get(lIndex).getPointB()+" matches with "+stepLatLngPair.getPointA()+" : "+stepLatLngPair.getPointB());
+                    distance = latLngPairs.get(lIndex).getDistance();
+                    break;
+                }
+            }
+
+            //return -1. Total distance should be atomic
+            if(distance == -1){
+                return;
+            }
+
+            if(steps.get(stepIndex).getStepType() == Step.TYPE_MATATU){
+                totalTime = totalTime + (distance/SPEED_MATATU);
+            }
+            else if(steps.get(stepIndex).getStepType() == Step.TYPE_WALKING){
+                totalTime = totalTime + (distance/SPEED_WALKING);
+            }
+        }
+        Log.d(TAG, "Estimated time for commute is "+String.valueOf(totalTime));
+        time = totalTime;
+    }
+
     @Override
     public int describeContents() {
         return 0;
@@ -133,12 +202,14 @@ public class Commute implements Parcelable {
         parcel.writeTypedList(steps);
         parcel.writeParcelable(from, 0);
         parcel.writeParcelable(to, 0);
+        parcel.writeDouble(time);
     }
 
     public void readFromParcel(Parcel in){
         in.readTypedList(steps, Step.CREATOR);
         from = in.readParcelable(LatLng.class.getClassLoader());
         to = in.readParcelable(LatLng.class.getClassLoader());
+        time = in.readDouble();
     }
 
     /**
@@ -252,6 +323,37 @@ public class Commute implements Parcelable {
         };
     }
 
+    public static class LatLngPair{
+        private final LatLng pointA;
+        private final LatLng pointB;
+        private final double distance;
+
+        public LatLngPair(LatLng pointA, LatLng pointB, double distance){
+            this.pointA = pointA;
+            this.pointB = pointB;
+            this.distance = distance;
+        }
+
+        public LatLng getPointA(){
+            return pointA;
+        }
+
+        public LatLng getPointB(){
+            return pointB;
+        }
+
+        public double getDistance(){
+            return distance;
+        }
+
+        public boolean equals(LatLngPair latLngPair){
+            if(latLngPair.getPointA().equals(pointA) && latLngPair.getPointB().equals(pointB)){
+                return true;
+            }
+            return false;
+        }
+    }
+
     public static class ScoreComparator implements Comparator<Commute> {
 
         @Override
@@ -267,6 +369,34 @@ public class Commute implements Parcelable {
             }
             else {
                 return 1;
+            }
+        }
+    }
+
+    /**
+     * This class is a custom adapter for the RecyclerView
+     */
+    public static class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHolder> {
+
+        @Override
+        public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+            return null;
+        }
+
+        @Override
+        public void onBindViewHolder(ViewHolder holder, int position) {
+
+        }
+
+        @Override
+        public int getItemCount() {
+            return 0;
+        }
+
+        public static class ViewHolder extends RecyclerView.ViewHolder {
+
+            public ViewHolder(View itemView) {
+                super(itemView);
             }
         }
     }

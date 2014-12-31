@@ -1,5 +1,10 @@
 package ke.co.ma3map.android.handlers;
 
+import android.content.Context;
+import android.os.AsyncTask;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 
 import com.google.android.gms.maps.model.LatLng;
@@ -11,15 +16,16 @@ import java.util.List;
 import ke.co.ma3map.android.carriers.Commute;
 import ke.co.ma3map.android.carriers.Route;
 import ke.co.ma3map.android.carriers.Stop;
+import ke.co.ma3map.android.listeners.ProgressListener;
 
 /**
  * Created by jason on 17/11/14.
  * This Class is responsible for determining the best path between source and destination
  */
-public class BestPath {
+public class BestPath extends Data {
     private static final String TAG = "ma3map.BestPath";
     private static final int MAX_NODES = 2;//the maximum number of routes (nodes) that should be in a commute
-    private static final double MAX_WALKING_DISTANCE = 50;//the maximum distance allowed for waliking when connecting nodes (routes)
+    private static final double MAX_WALKING_DISTANCE = 1000;//the maximum distance allowed for waliking when connecting nodes (routes)
     public static final int MAX_FROM_POINTS = 5;
     public static final int MAX_TO_POINTS = 10;
     private final List<Stop> from;
@@ -27,55 +33,35 @@ public class BestPath {
     private final List<Stop> to;
     private final LatLng actualTo;
     private final ArrayList<Route> routes;
+    private final ArrayList<Commute> allCommutes;
+    private int bestPathThreadIndex;
+    private String bundleKey;
 
-    public BestPath(List<Stop> from, LatLng actualFrom, List<Stop> to, LatLng actualTo, ArrayList<Route> routes){
+    public BestPath(Context context, List<Stop> from, LatLng actualFrom, List<Stop> to, LatLng actualTo, ArrayList<Route> routes, String bundleKey){
+        super(context);
         this.from = from;
         this.actualFrom = actualFrom;
         this.to = to;
         this.actualTo = actualTo;
         this.routes = routes;
+        this.allCommutes = new ArrayList<Commute>();
+        bestPathThreadIndex = 0;
+        this.bundleKey = bundleKey;
     }
 
     /**
      * This method returns a list of commutes starting with the best
      * @return
      */
-    public ArrayList<Commute> getCommutes(){
-        ArrayList<Commute> commutes = new ArrayList<Commute>();
+    public void calculateCommutes(){
+        final ArrayList<Commute> commutes = new ArrayList<Commute>();
 
+        //spawn asynchronous threads for each of the from points for calculating the best path
         for(int fromIndex = 0; fromIndex < from.size(); fromIndex++){
-            Log.d(TAG, "########################################");
-            Stop currFrom = from.get(fromIndex);
-            ArrayList<Route> fromRoutes = getRoutesWithStop(currFrom);
-            Log.d(TAG, "From point in "+fromRoutes.size()+" routes");
-
-            //check if to point in any of the
-            for(int index = 0; index < fromRoutes.size(); index++){
-                Log.d(TAG, "*********************************");
-                List<String> noGoRouteIDs = new ArrayList<String>();
-                for(int j = 0; j < fromRoutes.size(); j++){
-                    noGoRouteIDs.add(fromRoutes.get(j).getId());
-                }
-
-                //ArrayList<Route> currNodes = new ArrayList<Route>();
-                //currNodes.add(fromRoutes.get(index));
-                Commute currCommute = new Commute(actualFrom, actualTo);
-                Commute.Step firstStep = new Commute.Step(Commute.Step.TYPE_MATATU, fromRoutes.get(index), currFrom, null);
-                currCommute.addStep(firstStep);
-                Commute resultantBestCommute = getBestCommute(currCommute, noGoRouteIDs);
-                if(resultantBestCommute != null) {
-                    commutes.add(resultantBestCommute);
-                }
-                //Log.d(TAG, "Current path has "+currBestPath.size() + " routes");
-                Log.d(TAG, "*********************************");
-            }
-            Log.d(TAG, "########################################");
+            final Stop currFrom = from.get(fromIndex);
+            BestPathTasker currBestPathTasker = new BestPathTasker(from.size(), currFrom);
+            currBestPathTasker.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, 0);
         }
-
-        if(commutes != null){
-            Collections.sort(commutes, new Commute.ScoreComparator());
-        }
-        return commutes;
     }
 
     private Commute getBestCommute(Commute commute, List<String> noGoRouteIDs){
@@ -129,14 +115,14 @@ public class BestPath {
                 final Route currReferenceRoute = routes.get(rIndex);
                 for(int sIndex = 0; sIndex < nodeStops.size(); sIndex++) {
                     final Stop currReferenceStop = nodeStops.get(sIndex);
-                    //double distanceToStop = currReferenceRoute.getDistanceToStop(nodeStops.get(sIndex));//if stop is in route, distance is going to be 0
-                    double distanceToStop = -1;
+                    double distanceToStop = currReferenceRoute.getDistanceToStop(currReferenceStop);//if stop is in route, distance is going to be 0
+                    /*double distanceToStop = -1;
                     if(currReferenceRoute.isStopInRoute(currReferenceStop)){
                         distanceToStop = 0;
-                    }
+                    }*/
                     //search for routeID in noGoRouteIDs
                     boolean checkRoute = true;
-                    for(String searchID : noGoRouteIDs){//TODO: not sure if this works
+                    for(String searchID : noGoRouteIDs){
                         if(searchID.equals(currReferenceRoute.getId())){
                             checkRoute = false;
                             break;
@@ -167,10 +153,7 @@ public class BestPath {
                             Commute.Step walkingStep = new Commute.Step(Commute.Step.TYPE_WALKING, null, currReferenceStop, currReferenceRoute.getClosestStop(currReferenceStop));
                             newCommute.addStep(walkingStep);
                         }
-                        Commute.Step matatuStep = new Commute.Step(Commute.Step.TYPE_MATATU, currReferenceRoute, currReferenceStop, null);
-                        //matatuStep.setStart(currReferenceRoute.getClosestStop(nodeStops.get(sIndex)));
-                        //matatuStep.setStart(currReferenceStop);//TODO: switch this back to the original once major bugs ironed out
-                        //matatuStep.setRoute(currReferenceRoute);
+                        Commute.Step matatuStep = new Commute.Step(Commute.Step.TYPE_MATATU, currReferenceRoute, currReferenceRoute.getClosestStop(currReferenceStop), null);
                         newCommute.addStep(matatuStep);
 
                         Commute currBestCommute = getBestCommute(newCommute, newNoGoRouteIDs);
@@ -201,9 +184,11 @@ public class BestPath {
     }
 
     /**
-     * TODO: debug
+     * This method gets routes from the class' routes ArrayList that contain the provided stop
+     *
      * @param stop
-     * @return
+     *
+     * @return  An ArrayList with routes that contain the provided stop
      */
     private ArrayList<Route> getRoutesWithStop(Stop stop){
         ArrayList<Route> stopRoutes = new ArrayList<Route>();
@@ -215,5 +200,67 @@ public class BestPath {
         }
 
         return stopRoutes;
+    }
+
+    private class BestPathTasker extends AsyncTask<Integer, Integer, ArrayList<Commute>>{
+        private final int threadCount;
+        private final Stop from;
+
+        public BestPathTasker(int threadCount, Stop from){
+            this.threadCount = threadCount;
+            this.from = from;
+        }
+
+
+        @Override
+        protected ArrayList<Commute> doInBackground(Integer... params) {
+            final ArrayList<Commute> commutes = new ArrayList<Commute>();
+            Log.d(TAG, "########################################");
+            ArrayList<Route> fromRoutes = getRoutesWithStop(from);
+            Log.d(TAG, "From point in "+fromRoutes.size()+" routes");
+
+            //check if to point in any of the
+            for(int index = 0; index < fromRoutes.size(); index++){
+                Log.d(TAG, "*********************************");
+                List<String> noGoRouteIDs = new ArrayList<String>();
+                for(int j = 0; j < fromRoutes.size(); j++){
+                    noGoRouteIDs.add(fromRoutes.get(j).getId());
+                }
+
+                //ArrayList<Route> currNodes = new ArrayList<Route>();
+                //currNodes.add(fromRoutes.get(index));
+                Commute currCommute = new Commute(actualFrom, actualTo);
+                Commute.Step firstStep = new Commute.Step(Commute.Step.TYPE_MATATU, fromRoutes.get(index), from, null);
+                currCommute.addStep(firstStep);
+                Commute resultantBestCommute = getBestCommute(currCommute, noGoRouteIDs);
+                if(resultantBestCommute != null) {
+                    commutes.add(resultantBestCommute);
+                }
+                //Log.d(TAG, "Current path has "+currBestPath.size() + " routes");
+                Log.d(TAG, "*********************************");
+            }
+            Log.d(TAG, "########################################");
+            return commutes;
+        }
+
+        @Override
+        protected void onPostExecute(ArrayList<Commute> commutes) {
+            super.onPostExecute(commutes);
+            if(commutes != null){
+                allCommutes.addAll(commutes);
+            }
+
+            bestPathThreadIndex++;
+            if(bestPathThreadIndex == threadCount){//this is the last BestPathTasker to finish executing
+                //finalize the progressListeners
+                Bundle bundle = new Bundle();
+                bundle.putParcelableArrayList(bundleKey, allCommutes);
+                finalizeProgressListeners(bundle, "Done calculating commute paths", ProgressListener.FLAG_DONE);
+            }
+            else {
+                //update the progress listeners
+                updateProgressListeners(bestPathThreadIndex, threadCount, "Calculating commute paths", ProgressListener.FLAG_WORKING);
+            }
+        }
     }
 }

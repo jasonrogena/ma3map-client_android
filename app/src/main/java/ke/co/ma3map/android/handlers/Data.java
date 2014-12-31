@@ -56,9 +56,10 @@ public class Data {
     private static final int HTTP_POST_TIMEOUT = 20000;
     private static final int HTTP_RESPONSE_TIMEOUT = 200000;
 
-    private static final String PLACES_API_BASE = "https://maps.googleapis.com/maps/api/place";
-    private static final String URI_API_GET_ROUTES = "/get/routes";
-    private static final String URI_API_SEARCH = "/search";
+    private static final String API_GOOGLE_PLACES_URL = "https://maps.googleapis.com/maps/api/place";
+    private static final String API_GOOGLE_DISTANCE_MATRIX_URL = "https://maps.googleapis.com/maps/api/distancematrix";
+    private static final String API_MA3MAP_URI_GET_ROUTES = "/get/routes";
+    private static final String API_MA3MAP_URI_SEARCH = "/search";
 
     private List<ProgressListener> progressListeners;
     private final Context context;
@@ -72,13 +73,13 @@ public class Data {
         progressListeners.add(progressListener);
     }
 
-    private void updateProgressListeners(int progress, int end, String message, int flag){
+    protected void updateProgressListeners(int progress, int end, String message, int flag){
         for(int i = 0; i < progressListeners.size(); i++){
             progressListeners.get(i).onProgress(progress, end, message, flag);
         }
     }
 
-    private void finalizeProgressListeners(Bundle output, String message, int flag){
+    protected void finalizeProgressListeners(Bundle output, String message, int flag){
         for(int i = 0; i < progressListeners.size(); i++){
             progressListeners.get(i).onDone(output, message, flag);
         }
@@ -334,7 +335,7 @@ public class Data {
      */
     public ArrayList<Route> getAllRouteData(boolean willProgressContinue, String bundleKey){
 
-        JSONArray serverResponse = getDataFromServer(URI_API_GET_ROUTES, new JSONObject(), true, bundleKey);
+        JSONArray serverResponse = getDataFromServer(API_MA3MAP_URI_GET_ROUTES, new JSONObject(), true, bundleKey);
         ArrayList<Route> routes = cacheMapData(serverResponse, true, bundleKey);
 
         if(willProgressContinue == false){
@@ -376,7 +377,7 @@ public class Data {
         HttpURLConnection conn = null;
         StringBuilder jsonResults = new StringBuilder();
         try {
-            StringBuilder sb = new StringBuilder(PLACES_API_BASE + "/autocomplete/json");
+            StringBuilder sb = new StringBuilder(API_GOOGLE_PLACES_URL + "/autocomplete/json");
             sb.append("?input=" + URLEncoder.encode(input, "utf8"));
             sb.append("&components=country:ke");
             sb.append("&location=-1.2927254,36.8204436");
@@ -424,6 +425,86 @@ public class Data {
     }
 
     /**
+     * This method get's the driving distance in metres between two points using Google's Distance
+     * Matrix API. Refer to https://developers.google.com/maps/documentation/distancematrix
+     *
+     * @param pointA    The first point
+     * @param pointB    The second point
+     *
+     * @return  The distance in metres between pointA and pointB
+     */
+    public double getDrivingDistance(LatLng pointA, LatLng pointB) {
+        ArrayList<String[]> resultList = null;
+
+        HttpURLConnection conn = null;
+        StringBuilder jsonResults = new StringBuilder();
+        try {
+            StringBuilder sb = new StringBuilder(API_GOOGLE_DISTANCE_MATRIX_URL + "/json");
+            sb.append("?origins="+String.valueOf(pointA.latitude)+","+String.valueOf(pointA.longitude));
+            sb.append("&destinations="+String.valueOf(pointB.latitude)+","+String.valueOf(pointB.longitude));
+            sb.append("&units=metric");
+            sb.append("&mode=driving");
+            sb.append("&key=" + context.getResources().getString(R.string.distance_matrix_api_key));
+
+            URL url = new URL(sb.toString());
+            conn = (HttpURLConnection) url.openConnection();
+            InputStreamReader in = new InputStreamReader(conn.getInputStream());
+
+            // Load the results into a StringBuilder
+            int read;
+            char[] buff = new char[1024];
+            while ((read = in.read(buff)) != -1) {
+                jsonResults.append(buff, 0, read);
+            }
+        } catch (MalformedURLException e) {
+            Log.e(TAG, "Error processing Distance Matrix API URL", e);
+            return -1;
+        } catch (IOException e) {
+            Log.e(TAG, "Error connecting to Distance Matrix API", e);
+            return -1;
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+
+        try {
+            // Create a JSON object hierarchy from the results
+            JSONObject jsonObj = new JSONObject(jsonResults.toString());
+            if(jsonObj.getString("status").equals("OK")){
+                JSONArray apiRows = jsonObj.getJSONArray("rows");
+                if(apiRows.length() > 0){
+                    JSONObject bestRow = apiRows.getJSONObject(0);
+                    JSONArray elements = bestRow.getJSONArray("elements");
+                    if(elements.length() > 0){
+                        JSONObject bestElement = elements.getJSONObject(0);
+                        Log.d(TAG, "Distance text from Google Distance Matrix API is "+bestElement.getJSONObject("distance").getString("text"));
+                        Log.d(TAG, "Distance value from Google Distance Matrix API is "+bestElement.getJSONObject("distance").getString("value"));
+                        //note that the distance matrix API returns text in KM but value in metres. No need to convert value from KM to metres
+                        return bestElement.getJSONObject("distance").getDouble("value");
+                    }
+                    else {
+                        Log.e(TAG, "No results from Distance Matrix API");
+                        return -1;
+                    }
+                }
+                else {
+                    Log.e(TAG, "No results from Distance Matrix API");
+                    return -1;
+                }
+            }
+            else {
+                Log.e(TAG, "Result from Distance Matrix API is "+jsonObj.getString("status"));
+                return -1;
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Cannot process JSON results", e);
+        }
+
+        return -1;
+    }
+
+    /**
      * This method gets a LatLng corresponding to a placeID using Google's Places API
      * TODO:make this method not static and implement ProgressListeners
      * @param context
@@ -436,7 +517,7 @@ public class Data {
         HttpURLConnection conn = null;
         StringBuilder jsonResults = new StringBuilder();
         try {
-            StringBuilder sb = new StringBuilder(PLACES_API_BASE + "/details/json");
+            StringBuilder sb = new StringBuilder(API_GOOGLE_PLACES_URL + "/details/json");
             sb.append("?placeid=" + URLEncoder.encode(placeID, "utf8"));
             sb.append("&key=" + context.getResources().getString(R.string.places_api_key));
 

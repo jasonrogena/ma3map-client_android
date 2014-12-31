@@ -16,6 +16,7 @@ import android.location.Location;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -102,6 +103,7 @@ public class Map extends Activity
 
     private LinearLayout interactionLL;
     private RelativeLayout routeSelectionRL;
+    private RecyclerView commutesRV;
     private AutoCompleteTextView fromACTV;
     private AutoCompleteTextView toACTV;
     private FloatingActionButton navigateFAB;
@@ -152,6 +154,8 @@ public class Map extends Activity
         interactionLL.setLayoutParams(iLLLayoutParams);
 
         routeSelectionRL = (RelativeLayout)this.findViewById(R.id.route_selection_rl);
+
+        //commutesRV = (RecyclerView)this.findViewById(R.id.commutes_rv);
 
         fromACTV = (AutoCompleteTextView)this.findViewById(R.id.from_actv);
         fromACTV.setOnClickListener(this);
@@ -630,7 +634,7 @@ public class Map extends Activity
             List<String[]> suggestions = Data.getPlaceSuggestions(Map.this, typed);
 
             //set the first suggestion as the current location
-            if(suggestions.size() > 0){
+            if(suggestions != null && suggestions.size() > 0){
                 Log.d(TAG, "most relevant placeID is "+suggestions.get(0)[0]);
                 routePoint.setPlaceID(suggestions.get(0)[0]);//assuming here the first item in the array is the most relevant
                 routePoint.setLatLng(null);
@@ -661,69 +665,79 @@ public class Map extends Activity
         @Override
         protected void onPostExecute(final List<String[]> places) {
             super.onPostExecute(places);
-
-            List<String> suggestionNames = new ArrayList<String>();
-            for(int i = 0; i < places.size(); i++){
-                suggestionNames.add(places.get(i)[1]);
-            }
-            isRunning = false;
-            ArrayAdapter<String> placesAA = new ArrayAdapter<String>(Map.this, android.R.layout.simple_list_item_1, suggestionNames);
-            actv.setAdapter(placesAA);
-
-            actv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
-                    //assuming that the routePoint is a pointer to the main route point (either fromPoint or toPoint)
-                    routePoint.setPlaceID(places.get(position)[0]);
-                    routePoint.setLatLng(null);
-                    if(fromPoint != null){
-                        Log.d(TAG, "fromPoint selectionMode = "+fromPoint.getSelectionMode());
-                        if(fromPoint.getLatLng() != null) Log.d(TAG, "fromPoint latLng = "+fromPoint.getLatLng());
-                        else Log.d(TAG, "fromPoint latLng = null");
-                        if(fromPoint.getPlaceID() != null) Log.d(TAG, "fromPoint placeID = "+fromPoint.getPlaceID());
-                        else Log.d(TAG, "fromPoint placeID = null");
-                    }
-                    if(toPoint != null){
-                        Log.d(TAG, "toPoint selectionMode = "+toPoint.getSelectionMode());
-                        if(toPoint.getLatLng() != null) Log.d(TAG, "toPoint latLng = "+toPoint.getLatLng());
-                        else Log.d(TAG, "toPoint latLng = null");
-                        if(toPoint.getPlaceID() != null) Log.d(TAG, "toPoint placeID = "+toPoint.getPlaceID());
-                        else Log.d(TAG, "toPoint placeID = null");
-                    }
+            if(places != null){
+                List<String> suggestionNames = new ArrayList<String>();
+                for(int i = 0; i < places.size(); i++){
+                    suggestionNames.add(places.get(i)[1]);
                 }
-            });
+                isRunning = false;
+                ArrayAdapter<String> placesAA = new ArrayAdapter<String>(Map.this, android.R.layout.simple_list_item_1, suggestionNames);
+                actv.setAdapter(placesAA);
+
+                actv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
+                        //assuming that the routePoint is a pointer to the main route point (either fromPoint or toPoint)
+                        routePoint.setPlaceID(places.get(position)[0]);
+                        routePoint.setLatLng(null);
+                        if(fromPoint != null){
+                            Log.d(TAG, "fromPoint selectionMode = "+fromPoint.getSelectionMode());
+                            if(fromPoint.getLatLng() != null) Log.d(TAG, "fromPoint latLng = "+fromPoint.getLatLng());
+                            else Log.d(TAG, "fromPoint latLng = null");
+                            if(fromPoint.getPlaceID() != null) Log.d(TAG, "fromPoint placeID = "+fromPoint.getPlaceID());
+                            else Log.d(TAG, "fromPoint placeID = null");
+                        }
+                        if(toPoint != null){
+                            Log.d(TAG, "toPoint selectionMode = "+toPoint.getSelectionMode());
+                            if(toPoint.getLatLng() != null) Log.d(TAG, "toPoint latLng = "+toPoint.getLatLng());
+                            else Log.d(TAG, "toPoint latLng = null");
+                            if(toPoint.getPlaceID() != null) Log.d(TAG, "toPoint placeID = "+toPoint.getPlaceID());
+                            else Log.d(TAG, "toPoint placeID = null");
+                        }
+                    }
+                });
+            }
+            else {
+                Log.e(TAG, "Could not get place suggestions from Google Places API");
+            }
         }
     }
 
-    public class SearchRoutesTasker extends AsyncTask<Integer, Integer, ArrayList<Commute>>{
+    public class SearchRoutesTasker extends AsyncTask<Integer, Integer, Boolean>
+                                    implements ProgressListener{
 
-        ProgressDialog progressDialog;
-        RoutePoint from;
-        RoutePoint to;
-        String message;
+        private ProgressDialog progressDialog;
+        private RoutePoint from;
+        private RoutePoint to;
+        private String message;
+        private ArrayList<Commute.LatLngPair> latLngPairs;
+        private int distanceIndex;
+        private ArrayList<Commute> commutes;
+        private boolean processGoAhead;
 
         public SearchRoutesTasker(RoutePoint from, RoutePoint to){
             this.from = from;
             this.to = to;
 
             message = null;
+            latLngPairs = null;
+            distanceIndex = -1;
+            processGoAhead = false;
         }
 
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
-
-            progressDialog = ProgressDialog.show(Map.this, null, null, true, true, new DialogInterface.OnCancelListener() {
-                @Override
-                public void onCancel(DialogInterface dialogInterface) {
-                    SearchRoutesTasker.this.cancel(true);
-                }
-            });
+            progressDialog = new ProgressDialog(Map.this);
+            progressDialog.setMessage("Calculating commute paths");
+            progressDialog.setIndeterminate(false);
             progressDialog.setCancelable(false);
+            progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+            progressDialog.show();
         }
 
         @Override
-        protected ArrayList<Commute> doInBackground(Integer... integers) {
+        protected Boolean doInBackground(Integer... integers) {
             if(to != null && from != null){
                 if(to.getName().length() > 0 && from.getName().length() > 0){
                     //1. check if LatLng for to and from set and set if not
@@ -778,22 +792,62 @@ public class Map extends Activity
                         Collections.sort(toStops, new Stop.DistanceComparator(to.getLatLng()));//stop closest to destination becomes first
 
                         //4. determine commutes using closest stops
-                        BestPath bestPath = new BestPath(fromStops.subList(0, BestPath.MAX_FROM_POINTS), from.getLatLng(), toStops.subList(0, BestPath.MAX_TO_POINTS), to.getLatLng(), routes);
-                        return bestPath.getCommutes();
+                        BestPath bestPath = new BestPath(Map.this, fromStops.subList(0, BestPath.MAX_FROM_POINTS), from.getLatLng(), toStops.subList(0, BestPath.MAX_TO_POINTS), to.getLatLng(), routes, Commute.PARCELABLE_KEY);
+                        bestPath.addProgressListener(SearchRoutesTasker.this);
+                        bestPath.calculateCommutes();
+                        return true;
                     }
                     else {
                         message = "Route data not available at the moment";
                     }
                 }
             }
-            return null;
+            return false;
         }
 
         @Override
-        protected void onPostExecute(ArrayList<Commute> commutes) {
-            super.onPostExecute(commutes);
+        protected void onPostExecute(Boolean result) {
+            super.onPostExecute(result);
+            processGoAhead = result.booleanValue();
+        }
 
-            if(commutes != null){
+        private void setCommuteTimes(){
+            /*for(int index = 0; index < latLngPairs.size(); index++){
+                Log.d(TAG, "---------------------------------------");
+                Log.d(TAG, " Point A "+latLngPairs.get(index).getPointA());
+                Log.d(TAG, " Point B "+latLngPairs.get(index).getPointB());
+                Log.d(TAG, " Distance "+latLngPairs.get(index).getDistance());
+                Log.d(TAG, "---------------------------------------");
+            }*/
+            for(int cIndex = 0; cIndex < commutes.size(); cIndex++){
+                commutes.get(cIndex).setCommuteTime(latLngPairs);
+            }
+        }
+
+        /**
+         * This method adds commutes in the Commute Recycler View
+         */
+        public void showCommutes(){
+
+        }
+
+        @Override
+        public void onProgress(int progress, int end, String message, int flag) {
+            progressDialog.setProgress(progress);
+            progressDialog.setMax(end);
+            progressDialog.setMessage(message);
+        }
+
+        @Override
+        public void onDone(Bundle output, String message, int flag) {
+            commutes = output.getParcelableArrayList(Commute.PARCELABLE_KEY);
+
+            progressDialog.setIndeterminate(true);
+            progressDialog.setMessage("Sorting calculated commute paths");
+
+            Collections.sort(commutes, new Commute.ScoreComparator());
+
+            if(commutes != null && processGoAhead == true && flag == ProgressListener.FLAG_DONE){
 
                 Log.d(TAG, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
                 for(int commuteIndex = 0; commuteIndex < commutes.size(); commuteIndex++){
@@ -811,14 +865,67 @@ public class Map extends Activity
                                 Log.d(TAG, "    to "+currCommute.getSteps().get(stepIndex).getDestination().getName()+" "+currCommute.getSteps().get(stepIndex).getDestination().getLat()+","+currCommute.getSteps().get(stepIndex).getDestination().getLon());
                         }
                     }
+
+                    latLngPairs = commutes.get(commuteIndex).getStepLatLngPairs(latLngPairs);
                     Log.d(TAG, "------------------------------------------------------");
                 }
 
                 Log.d(TAG, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 
+                //use Google Distance Matrix API to calculate distances between the latLngPairs
+                if(latLngPairs != null){
+                    distanceIndex = 0;
+
+                    Log.d(TAG, "About to spawn "+latLngPairs.size()+" HTTP AsyncTasks to get driving distances from Google Distance Matrix API");
+                    Data dataHandler = new Data(Map.this);
+                    for(int index = 0; index < latLngPairs.size(); index++){
+                        DrivingDistanceTasker dDTasker = new DrivingDistanceTasker(dataHandler, latLngPairs.get(index));
+                        //dDTasker.execute(0);
+                        dDTasker.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, 0);//execute the thread in parallel
+                    }
+                }
+
                 progressDialog.dismiss();
                 if(message != null){
                     Toast.makeText(Map.this, message, Toast.LENGTH_LONG).show();
+                }
+            }
+        }
+
+        /**
+         * This AsyncTask gets the driving distance between two LatLngs using Google's Distance Matrix API
+         */
+        private class DrivingDistanceTasker extends AsyncTask<Integer, Integer, Double>{
+            private final Commute.LatLngPair latLngPair;
+            private final Data dataHandler;
+
+            public DrivingDistanceTasker(Data dataHandler, Commute.LatLngPair latLngPair){
+                this.latLngPair = latLngPair;
+                this.dataHandler = dataHandler;
+            }
+
+            @Override
+            protected Double doInBackground(Integer... params) {
+                return dataHandler.getDrivingDistance(latLngPair.getPointA(), latLngPair.getPointB());
+            }
+
+            @Override
+            protected void onPostExecute(Double distance) {
+                super.onPostExecute(distance);
+
+                if(distance != null) {
+                    for (int index = 0; index < latLngPairs.size(); index++) {
+                        if (latLngPair.equals(latLngPairs.get(index))) {
+                            latLngPairs.set(index, new Commute.LatLngPair(latLngPair.getPointA(), latLngPair.getPointB(), distance.doubleValue()));
+                            break;
+                        }
+                    }
+                }
+
+                distanceIndex++;
+                if(distanceIndex == latLngPairs.size()){
+                    setCommuteTimes();
+                    showCommutes();
                 }
             }
         }
