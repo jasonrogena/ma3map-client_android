@@ -58,6 +58,7 @@ import com.melnykov.fab.FloatingActionButton;
 import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.Array;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -237,48 +238,56 @@ public class Map extends Activity
         searchFAB.setColorPressedResId(R.color.secondary_light);
         searchFAB.setOnClickListener(this);
 
-
+        /**
+         * googleMap will be initialized as null if:
+         *  - version of Play Services on devices is outdated
+         */
         googleMap = ((MapFragment)getFragmentManager().findFragmentById(R.id.map)).getMap();
-        googleMap.setMyLocationEnabled(true);
-        googleMap.getUiSettings().setZoomControlsEnabled(false);
-        googleMap.setOnMapClickListener(this);
+        if(googleMap != null){
+            googleMap.setMyLocationEnabled(true);
+            googleMap.getUiSettings().setZoomControlsEnabled(false);
+            googleMap.setOnMapClickListener(this);
 
-        //locationClient = new LocationClient(this, this, this);
-        lastLocation = null;
-        googleApiClient = new GoogleApiClient.Builder(this)
-                .addApi(LocationServices.API)
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(this)
-                .build();
+            //locationClient = new LocationClient(this, this, this);
+            lastLocation = null;
+            googleApiClient = new GoogleApiClient.Builder(this)
+                    .addApi(LocationServices.API)
+                    .addConnectionCallbacks(this)
+                    .addOnConnectionFailedListener(this)
+                    .build();
 
-        interactionLL.setY(getWindowHeight());
+            interactionLL.setY(getWindowHeight());
 
-        phantomET = new EditText(this);
-        phantomET.setVisibility(EditText.INVISIBLE);
-        interactionLL.addView(phantomET);
+            phantomET = new EditText(this);
+            phantomET.setVisibility(EditText.INVISIBLE);
+            interactionLL.addView(phantomET);
 
-        //ask user for permission to get route data
-        DataStatusTasker dataStatusTasker = new DataStatusTasker();
-        dataStatusTasker.execute(0);
+            //ask user for permission to get route data
+            DataStatusTasker dataStatusTasker = new DataStatusTasker();
+            dataStatusTasker.execute(0);
 
         /*PlacesSearchSuggestionTasker fromPlacesSuggestions = new PlacesSearchSuggestionTasker(fromACTV);
         fromPlacesSuggestions.execute(0);
         PlacesSearchSuggestionTasker toPlacesSuggestions = new PlacesSearchSuggestionTasker(toACTV);
         toPlacesSuggestions.execute(0);*/
 
-        routes = null;
-        routeDataBroadcastReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                Toast.makeText(Map.this, "Route data gotten", Toast.LENGTH_LONG).show();
-                routes = intent.getParcelableArrayListExtra(Route.PARCELABLE_KEY);
-                Log.d(TAG, "************************* ALL ROUTES ****************************");
-                for(int i = 0; i < routes.size(); i++){
-                    Log.d(TAG, routes.get(i).getShortName());
+            routes = null;
+            routeDataBroadcastReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    Toast.makeText(Map.this, "Route data gotten", Toast.LENGTH_LONG).show();
+                    routes = intent.getParcelableArrayListExtra(Route.PARCELABLE_KEY);
+                    Log.d(TAG, "************************* ALL ROUTES ****************************");
+                    for(int i = 0; i < routes.size(); i++){
+                        Log.d(TAG, routes.get(i).getShortName());
+                    }
+                    Log.d(TAG, "************************* END ROUTES ****************************");
                 }
-                Log.d(TAG, "************************* END ROUTES ****************************");
-            }
-        };
+            };
+        }
+        else {
+            Toast.makeText(Map.this, "Unable to initialize correctly. Make sure you are running the most recent version of Google Play Services", Toast.LENGTH_LONG).show();
+        }
     }
 
     /**
@@ -289,15 +298,18 @@ public class Map extends Activity
     protected void onResume() {
         super.onResume();
 
-        /*if(!locationClient.isConnected()){
-            locationClient.connect();
-        }*/
+        //do nothing of Google Maps API not initialized
+        if(googleApiClient != null){
+            googleApiClient.connect();
+            /*if(!locationClient.isConnected()){
+                locationClient.connect();
+            }*/
 
-        googleApiClient.connect();
+            //register broadcast receivers
+            LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
+            localBroadcastManager.registerReceiver(routeDataBroadcastReceiver, new IntentFilter(GetRouteData.ACTION_GET_ROUTE_DATA));
+        }
 
-        //register broadcast receivers
-        LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
-        localBroadcastManager.registerReceiver(routeDataBroadcastReceiver, new IntentFilter(GetRouteData.ACTION_GET_ROUTE_DATA));
     }
 
     /**
@@ -308,12 +320,15 @@ public class Map extends Activity
     protected void onPause(){
         super.onPause();
 
-        //locationClient.disconnect();
-        googleApiClient.disconnect();
+        //if Google Maps API was not initialized, nothing was done in onResume. Do nothing here also
+        if(googleApiClient != null){
+            //locationClient.disconnect();
+            googleApiClient.disconnect();
 
-        //unregister broadcast receivers
-        LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
-        localBroadcastManager.unregisterReceiver(routeDataBroadcastReceiver);
+            //unregister broadcast receivers
+            LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
+            localBroadcastManager.unregisterReceiver(routeDataBroadcastReceiver);
+        }
     }
 
     /**
@@ -438,6 +453,10 @@ public class Map extends Activity
         }
         else if(view == searchFAB){
             Log.d(TAG, "Search FAB clicked");
+            if(searchRoutesTasker != null){
+                searchRoutesTasker.cancel(true);
+                searchRoutesTasker = null;
+            }
             searchRoutesTasker = new SearchRoutesTasker(fromPoint, toPoint);
             searchRoutesTasker.execute(0);
         }
@@ -717,16 +736,14 @@ public class Map extends Activity
         private ArrayList<Commute.LatLngPair> latLngPairs;
         private int distanceIndex;
         private ArrayList<Commute> commutes;
-        private boolean processGoAhead;
 
         public SearchRoutesTasker(RoutePoint from, RoutePoint to){
-            this.from = from;
-            this.to = to;
+            this.from = new RoutePoint(from.getLatLng(), from.getName(), from.getSelectionMode(), from.getPlaceID());
+            this.to = new RoutePoint(to.getLatLng(), to.getName(), to.getSelectionMode(), to.getPlaceID());
 
             message = null;
             latLngPairs = null;
             distanceIndex = -1;
-            processGoAhead = false;
         }
 
         @Override
@@ -737,6 +754,8 @@ public class Map extends Activity
             progressDialog.setIndeterminate(false);
             progressDialog.setCancelable(false);
             progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+            progressDialog.setProgressNumberFormat("");
+            progressDialog.setProgressPercentFormat(NumberFormat.getPercentInstance());
             progressDialog.show();
         }
 
@@ -750,7 +769,7 @@ public class Map extends Activity
                     }
                     else if(to.getSelectionMode() == RoutePoint.MODE_TYPED){
                         Log.e(TAG, "No locationID for to point found");
-                        return null;
+                        return false;
                     }
 
                     if(from.getSelectionMode() == RoutePoint.MODE_TYPED && from.getLatLng() == null && from.getPlaceID()!=null){
@@ -758,7 +777,7 @@ public class Map extends Activity
                     }
                     else if(from.getSelectionMode() == RoutePoint.MODE_TYPED) {
                         Log.e(TAG, "No locationID for from point found");
-                        return null;
+                        return false;
                     }
 
                     //2. get cached route data
@@ -812,7 +831,16 @@ public class Map extends Activity
         @Override
         protected void onPostExecute(Boolean result) {
             super.onPostExecute(result);
-            processGoAhead = result.booleanValue();
+            if(result == null || result.booleanValue() == false){
+                Toast.makeText(Map.this, "Something went wrong. Try searching again", Toast.LENGTH_LONG).show();
+                finish();
+            }
+        }
+
+        private void finish(){
+            progressDialog.dismiss();
+            from = null;
+            to = null;
         }
 
         private void setCommuteTimes(){
@@ -846,13 +874,14 @@ public class Map extends Activity
         @Override
         public void onDone(Bundle output, String message, int flag) {
             commutes = output.getParcelableArrayList(Commute.PARCELABLE_KEY);
-
+            progressDialog.setProgress(1);
+            progressDialog.setMax(1);
             progressDialog.setIndeterminate(true);
             progressDialog.setMessage("Sorting calculated commute paths");
 
             Collections.sort(commutes, new Commute.ScoreComparator());
 
-            if(commutes != null && processGoAhead == true && flag == ProgressListener.FLAG_DONE){
+            if(commutes != null && flag == ProgressListener.FLAG_DONE){
 
                 Log.d(TAG, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
                 for(int commuteIndex = 0; commuteIndex < commutes.size(); commuteIndex++){
@@ -890,7 +919,6 @@ public class Map extends Activity
                     }
                 }
 
-                progressDialog.dismiss();
                 if(message != null){
                     Toast.makeText(Map.this, message, Toast.LENGTH_LONG).show();
                 }
@@ -931,6 +959,7 @@ public class Map extends Activity
                 if(distanceIndex == latLngPairs.size()){
                     setCommuteTimes();
                     showCommutes();
+                    finish();
                 }
             }
         }
@@ -979,6 +1008,7 @@ public class Map extends Activity
             progressDialog.setIndeterminate(false);
             progressDialog.setCancelable(false);
             progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+            progressDialog.setProgressNumberFormat("");
             progressDialog.show();
         }
 
@@ -1034,6 +1064,11 @@ public class Map extends Activity
             this.latLng = latLng;
             this.name = name;
             this.selectionMode = selectionMode;
+        }
+
+        public RoutePoint(LatLng latLng, String name, int selectionMode, String placeID){
+            this(latLng, name, selectionMode);
+            this.placeID = placeID;
         }
 
         public LatLng getLatLng() {

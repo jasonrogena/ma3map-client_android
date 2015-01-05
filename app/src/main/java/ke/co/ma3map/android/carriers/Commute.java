@@ -5,7 +5,6 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
-import android.view.View;
 import android.view.ViewGroup;
 
 import com.google.android.gms.maps.model.LatLng;
@@ -14,7 +13,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import ke.co.ma3map.android.handlers.Data;
 import ke.co.ma3map.android.views.CommuteRecyclerView;
 
 /**
@@ -442,19 +440,23 @@ public class Commute implements Parcelable {
     /**
      * This class is a custom adapter for the RecyclerView
      */
-    public static class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHolder> {
+    public static class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHolder>
+                                        implements CommuteRecyclerView.OnItemClickedListener{
 
         private final ArrayList<Commute> commutes;
         private final Context context;
+        private final ArrayList<CommuteRecyclerView> commuteRecyclerViews;
 
         public RecyclerAdapter(Context context, ArrayList<Commute> commutes){
             this.context = context;
             this.commutes = commutes;
+            this.commuteRecyclerViews = new ArrayList<CommuteRecyclerView>();
         }
 
         @Override
         public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            CommuteRecyclerView commuteRecyclerView = new CommuteRecyclerView(context);
+            CommuteRecyclerView commuteRecyclerView = new CommuteRecyclerView(context, RecyclerAdapter.this, commuteRecyclerViews.size());
+            this.commuteRecyclerViews.add(commuteRecyclerView);
             return new ViewHolder(commuteRecyclerView);
         }
 
@@ -468,6 +470,19 @@ public class Commute implements Parcelable {
             return commutes.size();
         }
 
+        @Override
+        public void onClick(int mode) {
+            if(mode == CommuteRecyclerView.MODE_RETRACTED){
+                /*
+                since this code is called before the onClick code in CommuteRecyclerView, retract
+                all the CommuteRecyclerViews
+                */
+                for(int index = 0; index < commuteRecyclerViews.size(); index++){
+                    commuteRecyclerViews.get(index).retract();
+                }
+            }
+        }
+
         public static class ViewHolder extends RecyclerView.ViewHolder {
 
             private CommuteRecyclerView commuteRecyclerView;
@@ -478,6 +493,7 @@ public class Commute implements Parcelable {
 
             public void setCommute(Commute commute){
                 commuteRecyclerView.setCommute(commute);
+                commuteRecyclerView.retract();
             }
         }
     }
