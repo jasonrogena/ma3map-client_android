@@ -5,3 +5,6 @@
 /build
 *.swp
 *.apk
+
+#exclude the release apk
+!app/build/outputs/apk/app-release.apk

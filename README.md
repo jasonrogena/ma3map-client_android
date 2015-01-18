@@ -73,3 +73,7 @@ Google doesn't need your release key's SHA1 fingerprint. Use the Public API acce
 ## LICENSE
 
 This code is released under the [GNU Affero General Public License version 3](http://www.gnu.org/licenses/agpl-3.0.html). Please see the file LICENSE.md for details.
+
+## Download
+
+You can download the signed Android apk from [here](https://github.com/ma3map/ma3map-client_android/blob/master/app/build/outputs/apk/app-release.apk). Please note that this project is still under development and should be considered pre-alpha. The application currently only works on devices that run Android 5.0.1 and newer. Support for other versions of Android coming very soon!
