@@ -27,8 +27,8 @@ import ke.co.ma3map.android.listeners.ProgressListener;
  *
  * Problem
  * -------
- * 1. Given a set of multiple sources S and a set with multiple destinations D, find paths between
- *      a members of set S and set D in the least time possible.
+ * 1. Given a set with source route stops S and a set with destinations route stops D, find paths
+ *      between members of set S and set D in the least time possible.
  * 2. Order determined paths using predetermined path weights (not to be confused with edge weights
  *      explained in the next section).
  *
