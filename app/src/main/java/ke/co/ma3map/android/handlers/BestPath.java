@@ -19,11 +19,58 @@ import ke.co.ma3map.android.carriers.Stop;
 import ke.co.ma3map.android.listeners.ProgressListener;
 
 /**
- * Created by jason on 17/11/14.
- * This Class is responsible for determining the best path between source and destination
+ * Created by jason on 17th 11 Nov 2014.
+ * This Class is responsible for determining the best path between source and destination.
+ *
+ * ALGORITHM
+ * =========
+ *
+ * Problem
+ * -------
+ * 1. Given a set of multiple sources S and a set with multiple destinations D, find paths between
+ *      a members of set S and set D in the least time possible.
+ * 2. Order determined paths using predetermined path weights (not to be confused with edge weights
+ *      explained in the next section).
+ *
+ * Solution
+ * --------
+ * The class Implements Batched Shortest Path Computation using Dijkstra's Algorithm.
+ * Key elements in Dijkstra's Algorithm are nodes, edges/arcs and weights. In our case:
+ *  - nodes: A section of a route, terminated on both ends by stops
+ *  - edges/arcs: two nodes are connected to each other if the corresponding routes share the
+ *                  terminating stop or the terminating stops for each of the two routes are
+ *                  MAX_WALKING_DISTANCE away from each other
+ *  - weight: the weight of the edge joining stop A and B is dependent on the walking distance from
+ *              terminating stop at A to terminating stop at B
+ *  - path: A plot from one of the potential starting points in the graph to a potential finishing
+ *              point in the graph
+ *
+ * Considerations
+ * --------------
+ * 1. The possibility of getting more than one edge with the least weight from a node is very high.
+ *  In this algorithm, all the edges with the least weights from a node are considered. It is therefore
+ *  possible to create more than one paths from a node.
+ *
+ * Optimizations
+ * -------------
+ * 1. Path should have a maximum of MAX_NODES nodes
+ * 2. Once the algorithm obtains MAX_COMMUTES paths, it terminates and does not continue traversing
+ *      the graph
+ *
+ * Future work
+ * -----------
+ * Since the classic Djkstra's algorithm is considered a naive algorithm [2], we consider solving the
+ * same problem using faster algorithms presented in [1, 2]
+ *
+ *
+ * References
+ * ----------
+ * 1. D. Delling, A. Goldberg, and R. Werneck. Faster Batched Shortest Paths in Road Networks. [http://vesta.informatik.rwth-aachen.de/opus/volltexte/2011/3266/pdf/6.pdf] (Accessed 18th Jan 2015)
+ * 2. R. Geisberger, et al. Advanced Route Planning in Transportation Networks. [http://algo2.iti.kit.edu/download/diss_geisberger.pdf] (Accessed 16th Jan 2015)
  */
 public class BestPath extends Data {
     private static final String TAG = "ma3map.BestPath";
+    private static final int MAX_COMMUTES = 10;//the maximum number of commutes to be generated
     private static final int MAX_NODES = 2;//the maximum number of routes (nodes) that should be in a commute
     private static final double MAX_WALKING_DISTANCE = 1000;//the maximum distance allowed for waliking when connecting nodes (routes)
     public static final int MAX_FROM_POINTS = 5;
@@ -90,6 +137,11 @@ public class BestPath extends Data {
 
         if(!toIsInRoute){
             //last node does not have the destination
+
+            //check if enough commute alternatives have been gotten
+            if(allCommutes.size() > MAX_COMMUTES){
+                return null;
+            }
 
             //check if we have reached the maxNode limit
             if(nodes.size() > MAX_NODES){
