@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:fab="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -16,25 +15,143 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:background="@android:color/white">
-        <RelativeLayout
-            android:id="@+id/route_selection_rl"
+        android:paddingBottom="25dp"
+        android:background="#eeeeee"
+        android:elevation="1dp">
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="10dp">
-            <AutoCompleteTextView
-                android:id="@+id/from_actv"
+            android:layout_height="200dp"
+            android:background="@color/primary"
+            android:elevation="2dp">
+            <RelativeLayout
+                android:id="@+id/route_selection_rl"
                 android:layout_width="match_parent"
-                android:layout_height="25dp"
-                android:layout_alignParentTop="true"
-                android:layout_centerHorizontal="true"/>
-            <AutoCompleteTextView
-                android:id="@+id/to_actv"
-                android:layout_width="match_parent"
-                android:layout_height="25dp"
-                android:layout_alignParentBottom="true"
-                android:layout_centerHorizontal="true"/>
-        </RelativeLayout>
+                android:layout_height="150dp"
+                android:paddingTop="20dp"
+                android:paddingBottom="20dp">
+                <ImageView
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_alignParentLeft="true"
+                    android:layout_marginLeft="20dp"
+                    android:layout_marginTop="20dp"
+                    android:layout_marginBottom="20dp"
+                    android:src="@drawable/ic_from_to"/>
+                <RelativeLayout
+                    android:id="@+id/from_rl"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentTop="true"
+                    android:layout_alignParentRight="true"
+                    android:layout_marginLeft="40dp"
+                    android:layout_marginRight="40dp"
+                    android:padding="10dp">
+                    <AutoCompleteTextView
+                        android:id="@+id/from_actv"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_centerInParent="true"
+                        android:paddingRight="20dp"
+                        android:paddingLeft="20dp"
+                        android:hint="@string/from"
+                        android:background="@android:color/transparent"
+                        android:inputType="textNoSuggestions|textCapWords"
+                        android:textColor="@android:color/white"
+                        android:textColorHint="#99ffffff"
+                        android:singleLine="true"
+                        android:completionThreshold="2"/>
+                    <Button
+                        android:id="@+id/from_drop_pin_b"
+                        android:layout_width="25dp"
+                        android:layout_height="25dp"
+                        android:layout_centerVertical="true"
+                        android:layout_alignParentRight="true"
+                        android:background="@drawable/ic_action_locate"
+                        android:visibility="gone"/>
+                    <!--Button
+                        android:id="@+id/from_location_b"
+                        android:layout_width="25dp"
+                        android:layout_height="25dp"
+                        android:layout_centerVertical="true"
+                        android:layout_alignParentRight="true"
+                        android:layout_marginRight="30dp"
+                        android:background="@drawable/ic_action_locate"
+                        android:visibility="gone"/-->
+                </RelativeLayout>
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@android:color/white"
+                    android:layout_centerVertical="true"
+                    android:layout_alignParentRight="true"
+                    android:layout_marginLeft="60dp"
+                    android:layout_marginRight="40dp"/>
+                <RelativeLayout
+                    android:id="@+id/to_rl"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentBottom="true"
+                    android:layout_alignParentRight="true"
+                    android:layout_marginLeft="40dp"
+                    android:layout_marginRight="40dp"
+                    android:padding="10dp">
+                    <AutoCompleteTextView
+                        android:id="@+id/to_actv"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_centerInParent="true"
+                        android:paddingRight="20dp"
+                        android:paddingLeft="20dp"
+                        android:hint="@string/to"
+                        android:background="@android:color/transparent"
+                        android:inputType="textNoSuggestions|textCapWords"
+                        android:textColor="@android:color/white"
+                        android:textColorHint="#99ffffff"
+                        android:singleLine="true"
+                        android:completionThreshold="2"/>
+                    <Button
+                        android:id="@+id/to_drop_pin_b"
+                        android:layout_width="25dp"
+                        android:layout_height="25dp"
+                        android:layout_centerVertical="true"
+                        android:layout_alignParentRight="true"
+                        android:background="@drawable/ic_action_locate"
+                        android:visibility="gone"/>
+                    <!--Button
+                        android:id="@+id/to_location_b"
+                        android:layout_width="25dp"
+                        android:layout_height="25dp"
+                        android:layout_centerVertical="true"
+                        android:layout_alignParentRight="true"
+                        android:layout_marginRight="30dp"
+                        android:background="@drawable/ic_action_locate"
+                        android:visibility="gone"/-->
+                </RelativeLayout>
+                <!--Button
+                    android:id="@+id/search_b"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/to_rl"
+                    android:layout_alignParentRight="true"
+                    android:padding="10dp"
+                    android:background="@android:color/transparent"
+                    android:textColor="@color/accent"
+                    android:text="@string/search"/-->
+            </RelativeLayout>
+            <com.melnykov.fab.FloatingActionButton
+                android:id="@+id/search_fab"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|right"
+                android:layout_margin="16dp"
+                android:padding="30dp"
+                android:elevation="2dp"/>
+        </FrameLayout>
+        <android.support.v7.widget.RecyclerView
+            android:id="@+id/commutes_rv"
+            android:scrollbars="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
     </LinearLayout>
 
     <com.melnykov.fab.FloatingActionButton
@@ -42,6 +159,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|right"
-        android:layout_margin="16dp" />
+        android:layout_margin="16dp"
+        android:padding="30dp"
+        android:elevation="2dp"/>
 
 </FrameLayout>
