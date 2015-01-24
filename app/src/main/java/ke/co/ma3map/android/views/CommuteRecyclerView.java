@@ -5,6 +5,8 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.media.Image;
 import android.nfc.Tag;
+import android.os.Build;
+import android.support.v4.view.ViewCompat;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -170,12 +172,23 @@ public class CommuteRecyclerView extends LinearLayout
         });*/
 
         //3. Elevation
-        ValueAnimator elevationAnimator = ValueAnimator.ofFloat(this.getElevation(), 0);
+        ValueAnimator elevationAnimator = null;
+        if(Build.VERSION.SDK_INT < 21){
+            elevationAnimator = ValueAnimator.ofFloat(ViewCompat.getElevation(this), 0);
+        }
+        else {
+            elevationAnimator = ValueAnimator.ofFloat(this.getElevation(), 0);
+        }
         elevationAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
                 float elevation = (float)animation.getAnimatedValue();
-                CommuteRecyclerView.this.setElevation(elevation);
+                if(Build.VERSION.SDK_INT < 21){
+                    ViewCompat.setElevation(CommuteRecyclerView.this, elevation);
+                }
+                else {
+                    CommuteRecyclerView.this.setElevation(elevation);
+                }
             }
         });
 
@@ -276,7 +289,12 @@ public class CommuteRecyclerView extends LinearLayout
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
                 float elevation = (float)animation.getAnimatedValue();
-                CommuteRecyclerView.this.setElevation(elevation);
+                if(Build.VERSION.SDK_INT < 21){
+                    ViewCompat.setElevation(CommuteRecyclerView.this, elevation);
+                }
+                else {
+                    CommuteRecyclerView.this.setElevation(elevation);
+                }
             }
         });
 
