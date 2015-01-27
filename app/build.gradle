@@ -14,11 +14,21 @@ android {
 
     signingConfigs {
         release {
-            if(System.getenv("RELEASE_STORE_FILE") != null) {
-                storeFile file(new File(System.getenv("RELEASE_STORE_FILE")));
-                storePassword System.getenv("RELEASE_STORE_PW");
-                keyAlias System.getenv("RELEASE_KEY_ALIAS");
-                keyPassword System.getenv("RELEASE_KEY_PW");
+            Properties properties = new Properties()
+            properties.load(project.rootProject.file("local.properties").newDataInputStream())
+            if(properties != null &&
+                properties.containsKey("STORE_FILE") &&
+                properties.containsKey("STORE_PASSWORD") &&
+                properties.containsKey("KEY_ALIAS") &&
+                properties.containsKey("KEY_PASSWORD")) {
+
+                storeFile file(new File(properties["STORE_FILE"]));
+                storePassword properties["STORE_PASSWORD"];
+                keyAlias properties["KEY_ALIAS"];
+                keyPassword properties["KEY_PASSWORD"];
+            }
+            else {
+                println("Either local.properties does not exist or one of the following properties not set: STORE_FILE, STORE_PASSWORD, KEY_ALIAS or KEY_PASSWORD");
             }
         }
     }
@@ -28,7 +38,13 @@ android {
             //runProguard false
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            if(System.getenv("RELEASE_STORE_FILE") != null) {
+            Properties properties = new Properties()
+            properties.load(project.rootProject.file("local.properties").newDataInputStream())
+            if(properties != null &&
+                    properties.containsKey("STORE_FILE") &&
+                    properties.containsKey("STORE_PASSWORD") &&
+                    properties.containsKey("KEY_ALIAS") &&
+                    properties.containsKey("KEY_PASSWORD")) {
                 signingConfig signingConfigs.release
             }
         }

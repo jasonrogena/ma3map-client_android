@@ -20,12 +20,12 @@ You can show the release key's SHA1 fingerprint by running:
     cd ~/.android
     keytool -v -list -keystore release.keystore
 
-Also make sure you set the following environment variables. My gradle setup needs these variables:
+Add the following lines to the local.properties file in the project's root directory (you might have to create it):
 
-    export RELEASE_STORE_FILE='/home/[username]/.android/release.keystore'
-    export RELEASE_STORE_PW='your_key_store_pw'
-    export RELEASE_KEY_ALIAS='androidreleasekey'
-    export RELEASE_KEY_PW='your_release_key_pw'
+    STORE_FILE=/home/[username]/.android/release.keystore
+    STORE_PASSWORD=your_key_store_pw
+    KEY_ALIAS=androidreleasekey
+    KEY_PASSWORD=your_release_key_pw
 
 Make sure your Android SDK has the following installed:
 
