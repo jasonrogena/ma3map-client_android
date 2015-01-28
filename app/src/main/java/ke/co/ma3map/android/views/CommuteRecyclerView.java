@@ -3,6 +3,7 @@ package ke.co.ma3map.android.views;
 import android.animation.AnimatorSet;
 import android.animation.ValueAnimator;
 import android.content.Context;
+import android.content.Intent;
 import android.media.Image;
 import android.nfc.Tag;
 import android.os.Build;
@@ -23,6 +24,7 @@ import java.util.List;
 
 import ke.co.ma3map.android.carriers.Commute;
 import ke.co.ma3map.android.R;
+import ke.co.ma3map.android.services.Navigate;
 
 /**
  * Created by jason on 31/12/14.
@@ -94,6 +96,7 @@ public class CommuteRecyclerView extends LinearLayout
         LinearLayout.LayoutParams navigateLP = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT);
         navigateLP.setMargins(0, 0, 0, 0);
         navigateRL.setLayoutParams(navigateLP);
+        navigateRL.setOnClickListener(this);
 
         this.navigationBlueV = new View(context);
         RelativeLayout.LayoutParams viewLP = new RelativeLayout.LayoutParams(0, (int)(50 * scale + 0.5f));
@@ -491,6 +494,11 @@ public class CommuteRecyclerView extends LinearLayout
                 onItemClickedListener.onClick(getMode());
             }
             toggleMode();
+        }
+        else if(view == navigateRL){
+            Intent intent = new Intent(context, Navigate.class);
+            intent.putExtra(Commute.PARCELABLE_KEY, commute);
+            context.startService(intent);
         }
     }
 

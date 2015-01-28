@@ -393,26 +393,31 @@ public class Map extends Activity
      * that gets the route data
      */
     private void getRouteData(){
-        AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
-        dialogBuilder.setTitle("Matatu Route Data");
-        dialogBuilder.setMessage(R.string.warning_download_route_data);
-        dialogBuilder.setCancelable(false);
-        dialogBuilder.setPositiveButton(R.string.okay, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                dialogInterface.dismiss();
-                Intent intent = new Intent(Map.this, GetRouteData.class);
-                Map.this.startService(intent);
-            }
-        });
-        dialogBuilder.setNegativeButton(R.string.later, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                dialogInterface.dismiss();
-            }
-        });
-        AlertDialog alertDialog = dialogBuilder.create();
-        alertDialog.show();
+        if(!GetRouteData.isServiceRunning(Map.this)) {
+            AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
+            dialogBuilder.setTitle("Matatu Route Data");
+            dialogBuilder.setMessage(R.string.warning_download_route_data);
+            dialogBuilder.setCancelable(false);
+            dialogBuilder.setPositiveButton(R.string.okay, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    dialogInterface.dismiss();
+                    Intent intent = new Intent(Map.this, GetRouteData.class);
+                    Map.this.startService(intent);
+                }
+            });
+            dialogBuilder.setNegativeButton(R.string.later, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    dialogInterface.dismiss();
+                }
+            });
+            AlertDialog alertDialog = dialogBuilder.create();
+            alertDialog.show();
+        }
+        else {
+            Toast.makeText(Map.this, getResources().getString(R.string.app_fetching_route_data), Toast.LENGTH_LONG).show();
+        }
     }
 
     @Override

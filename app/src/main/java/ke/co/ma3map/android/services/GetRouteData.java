@@ -1,5 +1,6 @@
 package ke.co.ma3map.android.services;
 
+import android.app.ActivityManager;
 import android.app.IntentService;
 import android.app.NotificationManager;
 import android.content.Context;
@@ -14,6 +15,7 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import ke.co.ma3map.android.R;
 import ke.co.ma3map.android.activities.Map;
@@ -46,7 +48,7 @@ public class GetRouteData extends IntentService
 
     @Override
     protected void onHandleIntent(Intent intent) {
-        Log.i(TAG, "********* Starting Service *********");
+        Log.i(TAG, "********* Starting GetRouteData Service *********");
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         builder = new NotificationCompat.Builder(this)
                 .setContentTitle("Matatu route data")
@@ -56,7 +58,7 @@ public class GetRouteData extends IntentService
         data.addProgressListener(GetRouteData.this);
         data.getAllRouteData(false, Route.PARCELABLE_KEY);
 
-        Log.i(TAG, "********* Service finished *********");
+        Log.i(TAG, "********* GetRouteData Service finished *********");
     }
 
     @Override
@@ -89,5 +91,23 @@ public class GetRouteData extends IntentService
 
         intent.putParcelableArrayListExtra(Route.PARCELABLE_KEY, allRouteData);
         localBroadcastManager.sendBroadcast(intent);
+    }
+
+    /**
+     * This method checks if an instance of GetRouteData service is already running
+     *
+     * @return Returns true if an instance is already running
+     */
+    public static boolean isServiceRunning(Context context){
+        final ActivityManager activityManager = (ActivityManager)context.getSystemService(ACTIVITY_SERVICE);
+        final List<ActivityManager.RunningServiceInfo> services = activityManager.getRunningServices(Integer.MAX_VALUE);
+
+        for (ActivityManager.RunningServiceInfo runningServiceInfo : services) {
+            if (runningServiceInfo.service.getClassName().equals("GetRouteData")){
+                Log.i(TAG, "An instance of GetRouteData service is already running");
+                return true;
+            }
+        }
+        return false;
     }
 }

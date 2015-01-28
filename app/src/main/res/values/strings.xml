@@ -19,4 +19,5 @@
     <string name="walk_to">Walk to</string>
     <string name="take_a">Take a</string>
     <string name="start_commute">START COMMUTE</string>
+    <string name="app_fetching_route_data">ma3map is still fetching route data from the server</string>
 </resources>
