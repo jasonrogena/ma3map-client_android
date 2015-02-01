@@ -241,6 +241,7 @@ public class Map extends Activity
         /**
          * googleMap will be initialized as null if:
          *  - version of Play Services on devices is outdated
+         *  - user is not signed in to the PlayStore
          */
         googleMap = ((MapFragment)getFragmentManager().findFragmentById(R.id.map)).getMap();
         if(googleMap != null){
@@ -306,6 +307,7 @@ public class Map extends Activity
             }*/
 
             //register broadcast receivers
+            //broadcast receiver connecting this activity to the GetRouteData service
             LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
             localBroadcastManager.registerReceiver(routeDataBroadcastReceiver, new IntentFilter(GetRouteData.ACTION_GET_ROUTE_DATA));
         }
