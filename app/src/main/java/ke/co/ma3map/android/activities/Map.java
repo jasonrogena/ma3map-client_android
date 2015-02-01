@@ -48,7 +48,6 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 /*from the new PlayServices API*/
-import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
@@ -57,7 +56,6 @@ import com.melnykov.fab.FloatingActionButton;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.lang.reflect.Array;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -66,10 +64,12 @@ import java.util.Locale;
 
 import ke.co.ma3map.android.R;
 import ke.co.ma3map.android.carriers.Commute;
+import ke.co.ma3map.android.carriers.LatLngPair;
 import ke.co.ma3map.android.carriers.Route;
 import ke.co.ma3map.android.carriers.Stop;
 import ke.co.ma3map.android.handlers.BestPath;
 import ke.co.ma3map.android.handlers.Data;
+import ke.co.ma3map.android.helpers.CommuteRecyclerAdapter;
 import ke.co.ma3map.android.listeners.ProgressListener;
 import ke.co.ma3map.android.services.GetRouteData;
 
@@ -738,7 +738,7 @@ public class Map extends Activity
         private RoutePoint from;
         private RoutePoint to;
         private String message;
-        private ArrayList<Commute.LatLngPair> latLngPairs;
+        private ArrayList<LatLngPair> latLngPairs;
         private int distanceIndex;
         private ArrayList<Commute> commutes;
 
@@ -865,7 +865,7 @@ public class Map extends Activity
          * This method adds commutes in the Commute Recycler View
          */
         public void showCommutes(){
-            Commute.RecyclerAdapter recyclerAdapter = new Commute.RecyclerAdapter(Map.this, commutes);
+            CommuteRecyclerAdapter recyclerAdapter = new CommuteRecyclerAdapter(Map.this, commutes);
             commutesRV.setAdapter(recyclerAdapter);
         }
 
@@ -934,10 +934,10 @@ public class Map extends Activity
          * This AsyncTask gets the driving distance between two LatLngs using Google's Distance Matrix API
          */
         private class DrivingDistanceTasker extends AsyncTask<Integer, Integer, Double>{
-            private final Commute.LatLngPair latLngPair;
+            private final LatLngPair latLngPair;
             private final Data dataHandler;
 
-            public DrivingDistanceTasker(Data dataHandler, Commute.LatLngPair latLngPair){
+            public DrivingDistanceTasker(Data dataHandler, LatLngPair latLngPair){
                 this.latLngPair = latLngPair;
                 this.dataHandler = dataHandler;
             }
@@ -954,7 +954,7 @@ public class Map extends Activity
                 if(distance != null) {
                     for (int index = 0; index < latLngPairs.size(); index++) {
                         if (latLngPair.equals(latLngPairs.get(index))) {
-                            latLngPairs.set(index, new Commute.LatLngPair(latLngPair.getPointA(), latLngPair.getPointB(), distance.doubleValue()));
+                            latLngPairs.set(index, new LatLngPair(latLngPair.getPointA(), latLngPair.getPointB(), distance.doubleValue()));
                             break;
                         }
                     }

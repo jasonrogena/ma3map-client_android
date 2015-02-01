@@ -4,15 +4,12 @@ import android.app.ActivityManager;
 import android.app.IntentService;
 import android.content.Context;
 import android.content.Intent;
-import android.nfc.Tag;
 import android.os.Bundle;
 import android.util.Log;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import ke.co.ma3map.android.carriers.Commute;
-import ke.co.ma3map.android.carriers.Route;
 
 /**
  * This class implements the IntentService that handles navigation in ma3map.
