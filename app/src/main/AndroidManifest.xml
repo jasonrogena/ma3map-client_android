@@ -29,6 +29,7 @@
             android:value="@string/maps_api_key" />
 
         <service android:name=".services.GetRouteData" />
+        <service android:name=".services.Navigate" />
 
         <activity
             android:name=".activities.Map"

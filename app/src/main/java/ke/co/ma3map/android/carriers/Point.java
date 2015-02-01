@@ -15,6 +15,7 @@ import ke.co.ma3map.android.helpers.JSONObject;
 public class Point implements Parcelable{
     //point_lat text, point_lon text, point_sequence int, dist_traveled int
     public static final String PARCELABLE_KEY = "Point";
+    private static final int PARCELABLE_DESC = 6302;
     public static final String[] ALL_COLUMNS = new String[]{"line_id", "point_lat", "point_lon", "point_sequence", "dist_traveled"};
 
     private String lat;
@@ -57,22 +58,22 @@ public class Point implements Parcelable{
 
     @Override
     public int describeContents() {
-        return 0;
+        return PARCELABLE_DESC;
     }
 
     @Override
     public void writeToParcel(Parcel parcel, int flags) {
-        parcel.writeString(lat);
-        parcel.writeString(lon);
-        parcel.writeInt(distTraveled);
-        parcel.writeInt(sequence);
+        parcel.writeString(lat);//1
+        parcel.writeString(lon);//2
+        parcel.writeInt(distTraveled);//3
+        parcel.writeInt(sequence);//4
     }
 
     public void readFromParcel(Parcel in) {
-        lat = in.readString();
-        lon = in.readString();
-        distTraveled = in.readInt();
-        sequence = in.readInt();
+        lat = in.readString();//1
+        lon = in.readString();//2
+        distTraveled = in.readInt();//3
+        sequence = in.readInt();//4
     }
 
     /**

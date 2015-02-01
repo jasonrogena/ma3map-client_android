@@ -21,6 +21,7 @@ import ke.co.ma3map.android.helpers.JSONArray;
 public class Line implements Parcelable {
 
     public static final String PARCELABLE_KEY = "Line";
+    private static final int PARCELABLE_DESC = 9324;
     public static final String[] ALL_COLUMNS = new String[]{"line_id", "route_id", "direction_id"};
 
     private String id;
@@ -32,8 +33,8 @@ public class Line implements Parcelable {
     public Line() {
         id = null;
         directionID = -1;
-        stops = null;
-        points = null;
+        stops = new ArrayList<Stop>();
+        points = new ArrayList<Point>();
     }
 
     public Line(Parcel source){
@@ -154,22 +155,22 @@ public class Line implements Parcelable {
 
     @Override
     public int describeContents() {
-        return 0;
+        return PARCELABLE_DESC;
     }
 
     @Override
     public void writeToParcel(Parcel parcel, int i) {
-        parcel.writeString(id);
-        parcel.writeInt(directionID);
-        parcel.writeTypedList(stops);
-        parcel.writeTypedList(points);
+        parcel.writeString(id);//1
+        parcel.writeInt(directionID);//2
+        parcel.writeTypedList(stops);//3
+        parcel.writeTypedList(points);//4
     }
 
     public void readFromParcel(Parcel in){
-        id = in.readString();
-        directionID = in.readInt();
-        in.readTypedList(stops, Stop.CREATOR);
-        in.readTypedList(points, Point.CREATOR);
+        id = in.readString();//1
+        directionID = in.readInt();//2
+        in.readTypedList(stops, Stop.CREATOR);//3
+        in.readTypedList(points, Point.CREATOR);//4
     }
 
     /**
@@ -177,14 +178,12 @@ public class Line implements Parcelable {
      */
     public static final Creator<Line> CREATOR=new Creator<Line>() {
         @Override
-        public Line createFromParcel(Parcel source)
-        {
+        public Line createFromParcel(Parcel source) {
             return new Line(source);
         }
 
         @Override
-        public Line[] newArray(int size)
-        {
+        public Line[] newArray(int size) {
             return new Line[size];
         }
     };

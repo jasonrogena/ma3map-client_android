@@ -21,6 +21,7 @@ import ke.co.ma3map.android.helpers.JSONArray;
 public class Route implements Parcelable {
     public static final String TAG = "ma3map.Route";
     public static final String PARCELABLE_KEY = "Route";
+    private static final int PARCELABLE_DESC = 7522;
     public static final String[] ALL_COLUMNS = new String[]{"route_id", "route_short_name", "route_long_name", "route_desc", "route_type", "route_url", "route_color", "route_text_color"};
 
     private String shortName;
@@ -42,12 +43,13 @@ public class Route implements Parcelable {
         url = null;
         color = null;
         textColor = null;
-        lines = null;
+        lines = new ArrayList<Line>();
     }
 
     public Route(Parcel source){
         this();
         readFromParcel(source);
+        //Log.d(TAG, "Initialized route from parcel");
     }
 
     public Route(JSONObject routeData) throws JSONException{
@@ -185,32 +187,32 @@ public class Route implements Parcelable {
 
     @Override
     public int describeContents() {
-        return 0;
+        return PARCELABLE_DESC;
     }
 
     @Override
     public void writeToParcel(Parcel parcel, int i) {
-        parcel.writeString(shortName);
-        parcel.writeString(longName);
-        parcel.writeString(id);
-        parcel.writeString(desc);
-        parcel.writeInt(type);
-        parcel.writeString(url);
-        parcel.writeString(color);
-        parcel.writeString(textColor);
-        parcel.writeTypedList(lines);
+        parcel.writeString(shortName);//1
+        parcel.writeString(longName);//2
+        parcel.writeString(id);//3
+        parcel.writeString(desc);//4
+        parcel.writeInt(type);//5
+        parcel.writeString(url);//6
+        parcel.writeString(color);//7
+        parcel.writeString(textColor);//8
+        parcel.writeTypedList(lines);//9
     }
 
     public void readFromParcel(Parcel in){
-        shortName = in.readString();
-        longName = in.readString();
-        id = in.readString();
-        desc = in.readString();
-        type = in.readInt();
-        url = in.readString();
-        color = in.readString();
-        textColor = in.readString();
-        in.readTypedList(lines, Line.CREATOR);
+        shortName = in.readString();//1
+        longName = in.readString();//2
+        id = in.readString();//3
+        desc = in.readString();//4
+        type = in.readInt();//5
+        url = in.readString();//6
+        color = in.readString();//7
+        textColor = in.readString();//8
+        in.readTypedList(lines, Line.CREATOR);//9
     }
 
     /**

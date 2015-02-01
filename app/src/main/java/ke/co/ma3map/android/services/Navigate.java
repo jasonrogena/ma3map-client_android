@@ -4,11 +4,15 @@ import android.app.ActivityManager;
 import android.app.IntentService;
 import android.content.Context;
 import android.content.Intent;
+import android.nfc.Tag;
+import android.os.Bundle;
 import android.util.Log;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import ke.co.ma3map.android.carriers.Commute;
+import ke.co.ma3map.android.carriers.Route;
 
 /**
  * This class implements the IntentService that handles navigation in ma3map.
@@ -31,8 +35,23 @@ public class Navigate extends IntentService {
     @Override
     protected void onHandleIntent(Intent intent) {
         Log.i(TAG, "********* Starting Navigate Service *********");
-        commute = (Commute) intent.getParcelableExtra(Commute.PARCELABLE_KEY);
-
+        Bundle bundle = intent.getExtras();
+        commute = bundle.getParcelable(Commute.PARCELABLE_KEY);
+        List<Commute.Step> steps = commute.getSteps();
+        for(int stepCount = 0; stepCount < steps.size(); stepCount++){
+            Commute.Step currStep = steps.get(stepCount);
+            if(currStep.getStepType() == Commute.Step.TYPE_MATATU){
+                if(currStep.getRoute() != null) Log.d(TAG, "Current step is route: "+currStep.getRoute().getLongName());
+                else Log.e(TAG, "Route object in current matatu step is null");
+            }
+            else {
+                Log.d(TAG, "Current step is for walking");
+            }
+            if(currStep.getStart() != null) Log.d(TAG, "Start stop: " + currStep.getStart().getName());
+            else Log.w(TAG, "Current step has a null start");
+            if(currStep.getDestination() != null) Log.d(TAG, "End stop: "+currStep.getDestination().getName());
+            else Log.w(TAG, "Current step has a null destination");
+        }
         Log.i(TAG, "********* Navigate Service finished *********");
     }
 

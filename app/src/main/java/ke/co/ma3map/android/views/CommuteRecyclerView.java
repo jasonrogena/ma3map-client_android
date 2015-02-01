@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.media.Image;
 import android.nfc.Tag;
 import android.os.Build;
+import android.os.Bundle;
 import android.support.v4.view.ViewCompat;
 import android.util.Log;
 import android.view.View;
@@ -496,6 +497,23 @@ public class CommuteRecyclerView extends LinearLayout
             toggleMode();
         }
         else if(view == navigateRL){
+            Log.i(TAG, "********* Navigate button clicked *********");
+            List<Commute.Step> steps = commute.getSteps();
+            for(int stepCount = 0; stepCount < steps.size(); stepCount++){
+                Commute.Step currStep = steps.get(stepCount);
+                if(currStep.getStepType() == Commute.Step.TYPE_MATATU){
+                    Log.d(TAG, "Current step is route: "+currStep.getRoute().getLongName());
+                }
+                else {
+                    Log.d(TAG, "Current step is for walking");
+                }
+                if(currStep.getStart() != null) Log.d(TAG, "Start stop: " + currStep.getStart().getName());
+                else Log.w(TAG, "Current step has a null start");
+                if(currStep.getDestination() != null) Log.d(TAG, "End stop: "+currStep.getDestination().getName());
+                else Log.w(TAG, "Current step has a null destination");
+            }
+            Log.i(TAG, "********* End button clicked event *********");
+
             Intent intent = new Intent(context, Navigate.class);
             intent.putExtra(Commute.PARCELABLE_KEY, commute);
             context.startService(intent);

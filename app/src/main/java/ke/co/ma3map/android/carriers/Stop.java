@@ -3,6 +3,7 @@ package ke.co.ma3map.android.carriers;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.util.Log;
 
 import com.google.android.gms.maps.model.LatLng;
 
@@ -17,8 +18,10 @@ import ke.co.ma3map.android.helpers.JSONObject;
  * Created by jason on 21/09/14.
  */
 public class Stop implements Parcelable{
+    private static final String TAG = "ma3map.Stop";
     //stop_id text, stop_name text, stop_code text, stop_desc text, stop_lat text, stop_lon text, location_type int, parent_station text
     public static final String PARCELABLE_KEY = "Stop";
+    private static final int PARCELABLE_DESC = 1834;
     public static final String[] ALL_COLUMNS = new String[]{"stop_id", "stop_name", "stop_code", "stop_desc", "stop_lat", "stop_lon", "location_type", "parent_station"};
 
     private String id;
@@ -44,6 +47,7 @@ public class Stop implements Parcelable{
     public Stop(Parcel source){
         this();
         readFromParcel(source);
+        //Log.d(TAG, "Initialized stop from parcel");
     }
 
     public Stop(JSONObject stopData) throws JSONException{
@@ -185,29 +189,30 @@ public class Stop implements Parcelable{
 
     @Override
     public int describeContents() {
-        return 0;
+        return PARCELABLE_DESC;
     }
 
     @Override
     public void writeToParcel(Parcel parcel, int i) {
-        parcel.writeString(id);
-        parcel.writeString(name);
-        parcel.writeString(code);
-        parcel.writeString(desc);
-        parcel.writeString(lat);
-        parcel.writeInt(locationType);
-        parcel.writeString(parentStation);
+        parcel.writeString(id);//1
+        parcel.writeString(name);//2
+        parcel.writeString(code);//3
+        parcel.writeString(desc);//4
+        parcel.writeString(lat);//5
+        parcel.writeString(lon);//6
+        parcel.writeInt(locationType);//7
+        parcel.writeString(parentStation);//8
     }
 
     public void readFromParcel(Parcel in){
-        id = in.readString();
-        name = in.readString();
-        code = in.readString();
-        desc = in.readString();
-        lat = in.readString();
-        lon = in.readString();
-        locationType = in.readInt();
-        parentStation = in.readString();
+        id = in.readString();//1
+        name = in.readString();//2
+        code = in.readString();//3
+        desc = in.readString();//4
+        lat = in.readString();//5
+        lon = in.readString();//6
+        locationType = in.readInt();//7
+        parentStation = in.readString();//8
     }
 
     /**

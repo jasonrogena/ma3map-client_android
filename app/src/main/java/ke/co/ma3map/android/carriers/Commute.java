@@ -21,6 +21,7 @@ import ke.co.ma3map.android.views.CommuteRecyclerView;
 public class Commute implements Parcelable {
 
     public static final String PARCELABLE_KEY = "Commute";
+    private static final int PARCELABLE_DESC = 2112;
     private static final String TAG = "ma3map.Commute";
 
     private final double SCORE_STEP = 10;//score given for each step in commute
@@ -258,22 +259,22 @@ public class Commute implements Parcelable {
 
     @Override
     public int describeContents() {
-        return 0;
+        return Commute.PARCELABLE_DESC;
     }
 
     @Override
     public void writeToParcel(Parcel parcel, int i) {
-        parcel.writeTypedList(steps);
-        parcel.writeParcelable(from, 0);
-        parcel.writeParcelable(to, 0);
-        parcel.writeDouble(time);
+        parcel.writeTypedList(steps);//1
+        parcel.writeParcelable(from, 0);//2
+        parcel.writeParcelable(to, 0);//3
+        parcel.writeDouble(time);//4
     }
 
     public void readFromParcel(Parcel in){
-        in.readTypedList(steps, Step.CREATOR);
-        from = in.readParcelable(LatLng.class.getClassLoader());
-        to = in.readParcelable(LatLng.class.getClassLoader());
-        time = in.readDouble();
+        in.readTypedList(steps, Step.CREATOR);//1
+        from = in.readParcelable(LatLng.class.getClassLoader());//2
+        to = in.readParcelable(LatLng.class.getClassLoader());//3
+        time = in.readDouble();//4
     }
 
     /**
@@ -298,6 +299,7 @@ public class Commute implements Parcelable {
      */
     public static class Step implements Parcelable{
         public static  final String PARCELABLE_KEY = "Commute.Step";
+        private static final int PARCELABLE_DESC = 4322;
 
         public static final int TYPE_MATATU = 0;
         public static final int TYPE_WALKING = 1;
@@ -351,22 +353,22 @@ public class Commute implements Parcelable {
 
         @Override
         public int describeContents() {
-            return 0;
+            return Step.PARCELABLE_DESC;
         }
 
         @Override
-        public void writeToParcel(Parcel parcel, int i) {
-            parcel.writeParcelable(route, i);
-            parcel.writeParcelable(start, i);
-            parcel.writeParcelable(destination, i);
-            parcel.writeInt(stepType);
+        public void writeToParcel(Parcel parcel, int flag) {
+            parcel.writeInt(stepType);//1
+            parcel.writeParcelable(destination, flag);//2
+            parcel.writeParcelable(start, flag);//3
+            parcel.writeParcelable(route, flag);//4
         }
 
         public void readFromParcel(Parcel in){
-            route = in.readParcelable(Route.class.getClassLoader());
-            start = in.readParcelable(Stop.class.getClassLoader());
-            destination = in.readParcelable(Stop.class.getClassLoader());
-            stepType = in.readInt();
+            stepType = in.readInt();//2
+            destination = in.readParcelable(Stop.class.getClassLoader());//2
+            start = in.readParcelable(Stop.class.getClassLoader());//3
+            route = in.readParcelable(Route.class.getClassLoader());//4
         }
 
         /**
