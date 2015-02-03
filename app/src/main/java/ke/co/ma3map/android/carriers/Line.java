@@ -171,15 +171,56 @@ public class Line implements Parcelable {
     }
 
     /**
-     * This method returns the GIS polyline corresponding to this line
+     * This method returns the GIS polyline corresponding to this line with endPointA and endPointB
+     * being the endpoints in the polyline
+     *
+     * @param endPointA     The first endpoint in the polyline
+     * @param endPointB     The second endpoint in hte polyline
      *
      * @return  The GIS line corresponding to this line (ordered by the points' sequence ids)
      */
-    public ArrayList<LatLng> getPolyline(){
+    public ArrayList<LatLng> getPolyline(Stop endPointA, Stop endPointB){
         ArrayList<LatLng> polyline = new ArrayList<LatLng>();
+
         if(points != null){
+            //get the sequence number for the point closest to endPointA
+            int endPointASN = points.get(0).getSequence();
+            double endPointACD = endPointA.getDistance(points.get(0).getLatLng());
+            for(int pointIndex = 1; pointIndex < points.size(); pointIndex++){
+                double currDistance = endPointA.getDistance(points.get(pointIndex).getLatLng());
+                if(currDistance < endPointACD){
+                    endPointACD = currDistance;
+                    endPointASN = points.get(pointIndex).getSequence();
+                }
+            }
+
+            //get the sequence number for the point closest to endPointB
+            int endPointBSN = points.get(0).getSequence();
+            double endPointBCD = endPointB.getDistance(points.get(0).getLatLng());
+            for(int pointIndex = 1; pointIndex < points.size(); pointIndex++){
+                double currDistance = endPointB.getDistance(points.get(pointIndex).getLatLng());
+                if(currDistance < endPointBCD){
+                    endPointBCD = currDistance;
+                    endPointBSN = points.get(pointIndex).getSequence();
+                }
+            }
+
+            int seq1 = -1;
+            int seq2 = -1;
+
+            if(endPointASN < endPointBSN){
+                seq1 = endPointASN;
+                seq2 = endPointBSN;
+            }
+            else {
+                seq2 = endPointASN;
+                seq1 = endPointBSN;
+            }
+
             for(int pointIndex = 0; pointIndex < points.size(); pointIndex++){
-                polyline.add(points.get(pointIndex).getLatLng());
+                if(points.get(pointIndex).getSequence() >= seq1 && points.get(pointIndex).getSequence() <= seq2){
+                    polyline.add(points.get(pointIndex).getLatLng());
+                }
             }
         }
         return polyline;

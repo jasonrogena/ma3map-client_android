@@ -541,6 +541,7 @@ public class Data {
      *          goes wrong.
      */
     public org.json.JSONObject getDirections(String mode, LatLng origin, LatLng destination){
+        Log.d(TAG, "About to get directions from " + String.valueOf(origin.latitude)+","+String.valueOf(origin.longitude) + " to " + String.valueOf(destination.latitude)+","+String.valueOf(destination.longitude));
         HttpURLConnection conn = null;
         StringBuilder jsonResults = new StringBuilder();
         try {

@@ -73,6 +73,10 @@ public class Point implements Parcelable{
         return new LatLng(Double.parseDouble(lat), Double.parseDouble(lon));
     }
 
+    public int getSequence(){
+        return sequence;
+    }
+
 
     @Override
     public int describeContents() {

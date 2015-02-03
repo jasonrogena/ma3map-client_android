@@ -10,6 +10,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
@@ -52,6 +53,8 @@ import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 import com.melnykov.fab.FloatingActionButton;
 
 import java.io.IOException;
@@ -72,6 +75,7 @@ import ke.co.ma3map.android.handlers.Data;
 import ke.co.ma3map.android.helpers.CommuteRecyclerAdapter;
 import ke.co.ma3map.android.listeners.ProgressListener;
 import ke.co.ma3map.android.services.GetRouteData;
+import ke.co.ma3map.android.services.Navigate;
 
 public class Map extends Activity
                  implements GooglePlayServicesClient.ConnectionCallbacks,
@@ -127,8 +131,25 @@ public class Map extends Activity
     private boolean listenForFromText;//flag determining whether text changes should be listened at that moment
     private boolean listenForToText;//flag determining whether text changes should be listened at that moment
 
+    private ArrayList<Polyline> mapPolylines;
     private ArrayList<Route> routes;
+    /*
+    This broadcast receiver receivers broadcasts from the GetRouteData service.
+    Broadcast consists of route data from the service
+     */
     private BroadcastReceiver routeDataBroadcastReceiver;
+
+    /*
+    This broadcast receiver receives broadcasts from the Navigation service.
+    Broadcasts contain navigation statuses and can either be STATUS_ERROR, STATUS_STARTING, STATUS_UPDATED or STATUS_FINISHED.
+     */
+    private BroadcastReceiver navigationStatusBroadcastReceiver;
+
+    /*
+     This broadcast receiver receives commute segments containing GIS polylines for the current route being handled by the
+     Navigation service
+     */
+    private BroadcastReceiver commuteSegmentBroadcastReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -273,6 +294,9 @@ public class Map extends Activity
         toPlacesSuggestions.execute(0);*/
 
             routes = null;
+            mapPolylines = new ArrayList<Polyline>();
+
+            //initialize the relevant broadcast receivers
             routeDataBroadcastReceiver = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
@@ -283,6 +307,40 @@ public class Map extends Activity
                         Log.d(TAG, routes.get(i).getShortName());
                     }
                     Log.d(TAG, "************************* END ROUTES ****************************");
+                }
+            };
+
+            navigationStatusBroadcastReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    Bundle bundle = intent.getExtras();
+                    if(bundle != null){
+                        int status = bundle.getInt(Navigate.STATUS_PARCELABLE_KEY);
+                        if(status == Navigate.STATUS_ERROR){//service has encountered an error an cannot continue
+
+                        }
+                        else if(status == Navigate.STATUS_STARTING){//service has initialised and is waiting for the first GPS update
+
+                        }
+                        else if(status == Navigate.STATUS_UPDATED){//service has just received a GPS update that it's about to work on
+
+                        }
+                        else if(status == Navigate.STATUS_FINISHED){//service has completed its tasks and is about to be destroyed
+
+                        }
+                    }
+                }
+            };
+
+            commuteSegmentBroadcastReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    Bundle bundle = intent.getExtras();
+                    if(bundle != null){
+                        setDropPinMode();
+                        ArrayList<Commute.Segment> commuteSegments = bundle.getParcelableArrayList(Commute.Segment.PARCELABLE_KEY);
+                        redrawMapPolylines(commuteSegments);
+                    }
                 }
             };
         }
@@ -310,6 +368,8 @@ public class Map extends Activity
             //broadcast receiver connecting this activity to the GetRouteData service
             LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
             localBroadcastManager.registerReceiver(routeDataBroadcastReceiver, new IntentFilter(GetRouteData.ACTION_GET_ROUTE_DATA));
+            localBroadcastManager.registerReceiver(navigationStatusBroadcastReceiver, new IntentFilter(Navigate.ACTION_GET_NAVIGATION_STATUS));
+            localBroadcastManager.registerReceiver(commuteSegmentBroadcastReceiver, new IntentFilter(Navigate.ACTION_GET_COMMUTE_SEGMENTS));
         }
 
     }
@@ -330,6 +390,8 @@ public class Map extends Activity
             //unregister broadcast receivers
             LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
             localBroadcastManager.unregisterReceiver(routeDataBroadcastReceiver);
+            localBroadcastManager.unregisterReceiver(navigationStatusBroadcastReceiver);
+            localBroadcastManager.unregisterReceiver(commuteSegmentBroadcastReceiver);
         }
     }
 
@@ -387,6 +449,40 @@ public class Map extends Activity
 
         if(zoomIn){
             zoomInOnLocation();
+        }
+    }
+
+    /**
+     * This method redraws the polylines on the map. Polylines will have different colors depending
+     * on the type of commute segment they come from.
+     *
+     * @param commuteSegments   The Commute Segments holding the polylines.
+     */
+    private void redrawMapPolylines(ArrayList<Commute.Segment> commuteSegments){
+        if(googleMap != null) {
+            //first remove all existing polylines
+            for (int index = 0; index < mapPolylines.size(); index++) {
+                mapPolylines.get(index).remove();
+            }
+
+            //now add the new polylines to the map
+            for (int index = 0; index < commuteSegments.size(); index++) {
+                Commute.Segment currSegment = commuteSegments.get(index);
+
+                int color = Color.BLUE;//default color
+
+                if(currSegment.getType() == Commute.Segment.TYPE_WALKING){
+                    color = Color.GRAY;
+                }
+
+                Polyline currLine = googleMap.addPolyline(new PolylineOptions()
+                        .addAll(currSegment.getPolyline())
+                        .width(10)
+                        .color(color)
+                );
+
+                mapPolylines.add(currLine);
+            }
         }
     }
 
@@ -566,34 +662,41 @@ public class Map extends Activity
     private String dropPin(LatLng latLng, long pin, String name){
         String locationName = null;
         if(name == null) locationName = getLocationName(latLng);
-        float hue = 0f;
 
         if(pin == PIN_FROM) {
             if(name == null) {
                 fromPoint = new RoutePoint(latLng, locationName, RoutePoint.MODE_DROP_PIN);
             }
 
-            hue = BitmapDescriptorFactory.HUE_RED;
-            if(fromMarker != null) fromMarker.remove();
-            fromMarker = googleMap.addMarker(new MarkerOptions()
-                    .position(latLng)
-                    .title(getResources().getString(R.string.from) + " " + fromPoint.getName())
-                    .icon(BitmapDescriptorFactory.defaultMarker(hue)));
+            dropFromPin(latLng);
         }
         else if(pin == PIN_TO) {
             if(name == null) {
                 toPoint = new RoutePoint(latLng, locationName, RoutePoint.MODE_DROP_PIN);
             }
 
-            hue = BitmapDescriptorFactory.HUE_GREEN;
-            if(toMarker != null)toMarker.remove();
-            toMarker = googleMap.addMarker(new MarkerOptions()
-                    .position(latLng)
-                    .title(getResources().getString(R.string.to) + " " + toPoint)
-                    .icon(BitmapDescriptorFactory.defaultMarker(hue)));
+            dropToPin(latLng);
         }
 
         return locationName;
+    }
+
+    private void dropFromPin(LatLng latLng){
+        float hue = BitmapDescriptorFactory.HUE_RED;
+        if(fromMarker != null) fromMarker.remove();
+        fromMarker = googleMap.addMarker(new MarkerOptions()
+                .position(latLng)
+                .title(getResources().getString(R.string.from) + " " + fromPoint.getName())
+                .icon(BitmapDescriptorFactory.defaultMarker(hue)));
+    }
+
+    private void dropToPin(LatLng latLng){
+        float hue = BitmapDescriptorFactory.HUE_GREEN;
+        if(toMarker != null)toMarker.remove();
+        toMarker = googleMap.addMarker(new MarkerOptions()
+                .position(latLng)
+                .title(getResources().getString(R.string.to) + " " + toPoint)
+                .icon(BitmapDescriptorFactory.defaultMarker(hue)));
     }
 
     @Override
@@ -880,6 +983,10 @@ public class Map extends Activity
 
         @Override
         public void onDone(Bundle output, String message, int flag) {
+            //update the from and to points on the map
+            dropFromPin(from.getLatLng());
+            dropToPin(to.getLatLng());
+
             commutes = output.getParcelableArrayList(Commute.PARCELABLE_KEY);
             progressDialog.setProgress(1);
             progressDialog.setMax(1);

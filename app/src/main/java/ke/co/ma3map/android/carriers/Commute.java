@@ -420,6 +420,7 @@ public class Commute implements Parcelable {
         public Segment(ArrayList<LatLng> polyline, int type){
             this.polyline = polyline;
             this.type = type;
+            Log.d(TAG, "Commute segment initialized using an already decoded polyline. Polyline has "+polyline.size() +" points");
         }
 
         public Segment(JSONObject directionsAPIJsonObject, int type){
@@ -430,7 +431,9 @@ public class Commute implements Parcelable {
                     JSONArray routes = directionsAPIJsonObject.getJSONArray("routes");
                     if(routes.length() > 0){
                         String encodedPolyline = routes.getJSONObject(0).getJSONObject("overview_polyline").getString("points");
+                        Log.d(TAG, "Encoded polyline = " + encodedPolyline);
                         polyline = decodePolyline(encodedPolyline);
+                        Log.d(TAG, "Commute segment initialized using an encoded polyline. Polyline has "+polyline.size()+" points");
                     }
                     else {
                         Log.e(TAG, "Directions API provided to constructor does not have routes");
@@ -455,44 +458,45 @@ public class Commute implements Parcelable {
         /**
          * This method decodes polylines encoded using the algorithm described in
          * https://developers.google.com/maps/documentation/utilities/polylinealgorithm
-         * All thanks to Jeffrey Sambells for the code.
-         * Refer to http://jeffreysambells.com/2010/05/27/decoding-polylines-from-google-maps-direction-api-with-java
+         * Code obtained from https://github.com/googlemaps/android-maps-utils
          *
-         * @param encoded   String representing an encoded polyline
+         * @param encodedPath   String representing an encoded polyline
          * @return  A list of the decoded LatLngs representing the polyline
          */
-        private ArrayList<LatLng> decodePolyline(String encoded) {
+        private ArrayList<LatLng> decodePolyline(final String encodedPath) {
+            int len = encodedPath.length();
 
-            ArrayList<LatLng> poly = new ArrayList<LatLng>();
-            int index = 0, len = encoded.length();
-            int lat = 0, lng = 0;
+            // For speed we preallocate to an upper bound on the final length, then
+            // truncate the array before returning.
+            final ArrayList<LatLng> path = new ArrayList<LatLng>();
+            int index = 0;
+            int lat = 0;
+            int lng = 0;
 
             while (index < len) {
-                int b, shift = 0, result = 0;
+                int result = 1;
+                int shift = 0;
+                int b;
                 do {
-                    b = encoded.charAt(index++) - 63;
-                    result |= (b & 0x1f) << shift;
+                    b = encodedPath.charAt(index++) - 63 - 1;
+                    result += b << shift;
                     shift += 5;
-                } while (b >= 0x20);
-                int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-                lat += dlat;
+                } while (b >= 0x1f);
+                lat += (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
 
+                result = 1;
                 shift = 0;
-                result = 0;
                 do {
-                    b = encoded.charAt(index++) - 63;
-                    result |= (b & 0x1f) << shift;
+                    b = encodedPath.charAt(index++) - 63 - 1;
+                    result += b << shift;
                     shift += 5;
-                } while (b >= 0x20);
-                int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-                lng += dlng;
+                } while (b >= 0x1f);
+                lng += (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
 
-                LatLng p = new LatLng((int) (((double) lat / 1E5) * 1E6),
-                        (int) (((double) lng / 1E5) * 1E6));
-                poly.add(p);
+                path.add(new LatLng(lat * 1e-5, lng * 1e-5));
             }
 
-            return poly;
+            return path;
         }
 
         public ArrayList<LatLng> getPolyline() {

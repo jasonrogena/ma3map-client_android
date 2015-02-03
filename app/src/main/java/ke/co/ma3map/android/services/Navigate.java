@@ -42,10 +42,10 @@ public class Navigate extends IntentService
     public static final String ACTION_GET_NAVIGATION_STATUS = "ke.co.ma3map.android.action.getNavigationStatus";
 
     public static final String STATUS_PARCELABLE_KEY = "status";
-    public static final int STATUS_ERROR = 0;
-    public static final int STATUS_STARTING = 1;
-    public static final int STATUS_UPDATED = 2;
-    public static final int STATUS_FINISHED = 3;
+    public static final int STATUS_ERROR = 0;//an error has occurred and navigation cannot continue
+    public static final int STATUS_STARTING = 1;//everything has been initialised in the service. Waiting for the first GPS update
+    public static final int STATUS_UPDATED = 2;//navigation has been updated. User is probably moving
+    public static final int STATUS_FINISHED = 3;//navigation is complete. The service is about to be destroyed
 
     private static final String TAG = "ma3map.Navigate";
     private Commute commute;
@@ -73,8 +73,6 @@ public class Navigate extends IntentService
     public Navigate() {
         super(TAG);
         Log.i(TAG, "Navigate Service initialized");
-
-        initLocationAPI();
     }
 
     /**
@@ -125,6 +123,8 @@ public class Navigate extends IntentService
     @Override
     protected void onHandleIntent(Intent intent) {
         Log.i(TAG, "********* Starting Navigate Service *********");
+        initLocationAPI();
+
         if(connectToLocationAPI()){
             //get data from the intent
             Bundle bundle = intent.getExtras();
@@ -153,7 +153,7 @@ public class Navigate extends IntentService
 
 
             if(commute.getSteps().size() > 0){
-
+                Log.d(TAG, "Commute has at least one step. We are good to go");
                 //do all other preparations before starting navigation
                 if(broadcastCommuteSegments()){
                     allGood = true;
@@ -294,8 +294,10 @@ public class Navigate extends IntentService
                 segments.add(currSegment);
             }
             else if(currStep.getStepType() == Commute.Step.TYPE_MATATU){
+                //first make sure the line points in the route are loaded
                 currStep.getRoute().loadPoints(Navigate.this);
-                Commute.Segment currSegment = new Commute.Segment(currStep.getRoute().getPolyline(), Commute.Segment.TYPE_MATATU);
+
+                Commute.Segment currSegment = new Commute.Segment(currStep.getRoute().getPolyline(currStep.getStart(), currStep.getDestination()), Commute.Segment.TYPE_MATATU);
                 if(currSegment.getPolyline().size() == 0){
                     Log.e(TAG, "Commute segment representing walking in current commute step has an empty polyline");
                     return false;

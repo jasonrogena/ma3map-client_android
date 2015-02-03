@@ -260,14 +260,17 @@ public class Route implements Parcelable {
     }
 
     /**
-     * This method gets the GIS polyline corresponding to this route
+     * This method gets the GIS polyline corresponding to this route. Start and destination will be
+     * the endpoints in the polyline
      *
+     * @param endPointA     The first endpoint in the polyline
+     * @param endPointB     The second enpoint in the polyline
      * @return
      */
-    public ArrayList<LatLng> getPolyline(){
+    public ArrayList<LatLng> getPolyline(Stop endPointA, Stop endPointB){
         ArrayList<LatLng> polyline = new ArrayList<LatLng>();
         for(int lineIndex = 0; lineIndex < lines.size(); lineIndex++){
-            polyline.addAll(lines.get(lineIndex).getPolyline());
+            polyline.addAll(lines.get(lineIndex).getPolyline(endPointA, endPointB));
         }
 
         return polyline;
