@@ -6,9 +6,15 @@ import android.util.Log;
 
 import com.google.android.gms.maps.model.LatLng;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+
+import ke.co.ma3map.android.handlers.Data;
 
 /**
  * Created by jason on 28/10/14.
@@ -58,6 +64,14 @@ public class Commute implements Parcelable {
         }
 
         return matatuRoutes;
+    }
+
+    public LatLng getFrom(){
+        return from;
+    }
+
+    public LatLng getTo(){
+        return to;
     }
 
     public Step getStep(int index){
@@ -290,7 +304,7 @@ public class Commute implements Parcelable {
     };
 
     /**
-     * This data carrier class stores an instance of a step in navigating
+     * This data carrier class store commute steps. Steps can either be walking or matatu steps
      */
     public static class Step implements Parcelable{
         public static  final String PARCELABLE_KEY = "Commute.Step";
@@ -380,6 +394,156 @@ public class Commute implements Parcelable {
             public Step[] newArray(int size)
             {
                 return new Step[size];
+            }
+        };
+    }
+
+    /**
+     * This data carrier class stores a commute segment which is essentially a GIS polyline
+     */
+    public static class Segment implements Parcelable {
+
+        public static final int TYPE_MATATU = 0;
+        public static final int TYPE_WALKING = 1;
+        public static final String PARCELABLE_KEY = "Commute.Segment";
+        public static final int PARCELABLE_DESC = 2213;
+
+        private ArrayList<LatLng> polyline;
+        private int type;
+
+        /**
+         * Constructor for the Segment class.
+         *
+         * @param polyline  List of LatLngs that make the segment's polyline
+         * @param type      Type of segment. Can either be TYPE_WALKING or TYPE_MATATU
+         */
+        public Segment(ArrayList<LatLng> polyline, int type){
+            this.polyline = polyline;
+            this.type = type;
+        }
+
+        public Segment(JSONObject directionsAPIJsonObject, int type){
+            this.type = type;
+            polyline = new ArrayList<LatLng>();
+            try {
+                if(directionsAPIJsonObject.getString("status").equals("OK")){
+                    JSONArray routes = directionsAPIJsonObject.getJSONArray("routes");
+                    if(routes.length() > 0){
+                        String encodedPolyline = routes.getJSONObject(0).getJSONObject("overview_polyline").getString("points");
+                        polyline = decodePolyline(encodedPolyline);
+                    }
+                    else {
+                        Log.e(TAG, "Directions API provided to constructor does not have routes");
+                    }
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+                Log.e(TAG, "An error occurred while trying to parse JSON from Google Directions API while trying to initialize Segment using Directions API json output");
+            }
+        }
+
+        /**
+         * Constructor called when unpacking a packaged instance of this object
+         *
+         * @param source    Source parcel containing the packaged segment object
+         */
+        public Segment(Parcel source){
+            this(new ArrayList<LatLng>(), -1);
+            readFromParcel(source);
+        }
+
+        /**
+         * This method decodes polylines encoded using the algorithm described in
+         * https://developers.google.com/maps/documentation/utilities/polylinealgorithm
+         * All thanks to Jeffrey Sambells for the code.
+         * Refer to http://jeffreysambells.com/2010/05/27/decoding-polylines-from-google-maps-direction-api-with-java
+         *
+         * @param encoded   String representing an encoded polyline
+         * @return  A list of the decoded LatLngs representing the polyline
+         */
+        private ArrayList<LatLng> decodePolyline(String encoded) {
+
+            ArrayList<LatLng> poly = new ArrayList<LatLng>();
+            int index = 0, len = encoded.length();
+            int lat = 0, lng = 0;
+
+            while (index < len) {
+                int b, shift = 0, result = 0;
+                do {
+                    b = encoded.charAt(index++) - 63;
+                    result |= (b & 0x1f) << shift;
+                    shift += 5;
+                } while (b >= 0x20);
+                int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+                lat += dlat;
+
+                shift = 0;
+                result = 0;
+                do {
+                    b = encoded.charAt(index++) - 63;
+                    result |= (b & 0x1f) << shift;
+                    shift += 5;
+                } while (b >= 0x20);
+                int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+                lng += dlng;
+
+                LatLng p = new LatLng((int) (((double) lat / 1E5) * 1E6),
+                        (int) (((double) lng / 1E5) * 1E6));
+                poly.add(p);
+            }
+
+            return poly;
+        }
+
+        public ArrayList<LatLng> getPolyline() {
+            return polyline;
+        }
+
+        public int getType() {
+            return type;
+        }
+
+
+        @Override
+        public int describeContents() {
+            return PARCELABLE_DESC;
+        }
+
+        /**
+         * This method packs all member variables in the same order that they will be unpacked in
+         * readFromParcel
+         *
+         * @param parcel    The parcel to pack the member variables
+         * @param flags     Parceling flags to be used when packing member variables that are custom Objects
+         */
+        @Override
+        public void writeToParcel(Parcel parcel, int flags) {
+            parcel.writeInt(type);//1
+            parcel.writeTypedList(polyline);//2
+        }
+
+        /**
+         * This method unpacks member variables in the same sequence they were packed in writeToParcel
+         *
+         * @param in    Source parcel from where to unpack the variables
+         */
+        private void readFromParcel(Parcel in){
+            type = in.readInt();//1
+            in.readTypedList(polyline, LatLng.CREATOR);//2
+        }
+
+        /**
+         * This static object is to facilitate for other parcelable objects to carry a Segment object
+         */
+        public static final Creator<Segment> CREATOR=new Creator<Segment>() {
+            @Override
+            public Segment createFromParcel(Parcel source) {
+                return new Segment(source);
+            }
+
+            @Override
+            public Segment[] newArray(int size) {
+                return new Segment[size];
             }
         };
     }

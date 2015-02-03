@@ -1,8 +1,10 @@
 package ke.co.ma3map.android.carriers;
 
+import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.util.Log;
 
 import com.google.android.gms.maps.model.LatLng;
 
@@ -11,6 +13,7 @@ import org.json.JSONException;
 import java.util.ArrayList;
 import java.util.List;
 
+import ke.co.ma3map.android.handlers.Data;
 import ke.co.ma3map.android.helpers.Database;
 import ke.co.ma3map.android.helpers.JSONObject;
 import ke.co.ma3map.android.helpers.JSONArray;
@@ -19,6 +22,8 @@ import ke.co.ma3map.android.helpers.JSONArray;
  * Created by jason on 21/09/14.
  */
 public class Line implements Parcelable {
+
+    private static final String TAG = "ma3map.Line";
 
     public static final String PARCELABLE_KEY = "Line";
     private static final int PARCELABLE_DESC = 9324;
@@ -147,6 +152,37 @@ public class Line implements Parcelable {
             this.points.clear();
             this.points = null;
         }
+    }
+
+    /**
+     * This method loads all points corresponding to this line from the SQLite database if they are not
+     * already loaded.
+     *
+     * @param context   The context from where this method is called
+     */
+    public void loadPoints(Context context){
+        if(this.points == null || this.points.size() == 0){
+            Data dataHandler = new Data(context);
+            points = dataHandler.getLinePoints(id);
+        }
+        else {
+            Log.i(TAG, "Points for current line already loaded. not loading again");
+        }
+    }
+
+    /**
+     * This method returns the GIS polyline corresponding to this line
+     *
+     * @return  The GIS line corresponding to this line (ordered by the points' sequence ids)
+     */
+    public ArrayList<LatLng> getPolyline(){
+        ArrayList<LatLng> polyline = new ArrayList<LatLng>();
+        if(points != null){
+            for(int pointIndex = 0; pointIndex < points.size(); pointIndex++){
+                polyline.add(points.get(pointIndex).getLatLng());
+            }
+        }
+        return polyline;
     }
 
     public List<Stop> getStops(){

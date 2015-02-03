@@ -37,6 +37,8 @@ import java.util.Iterator;
 import java.util.List;
 
 import ke.co.ma3map.android.R;
+import ke.co.ma3map.android.carriers.Commute;
+import ke.co.ma3map.android.carriers.Point;
 import ke.co.ma3map.android.carriers.Route;
 import ke.co.ma3map.android.helpers.Database;
 import ke.co.ma3map.android.helpers.JSONObject;
@@ -52,14 +54,18 @@ import ke.co.ma3map.android.listeners.ProgressListener;
 public class Data {
     private static final String TAG = "ma3map.Data";
 
-    private static final String SERVER_URL = "http://ma3map.herokuapp.com";
+    private static final String SERVER_URL = "http://api.ma3map.org";
     private static final int HTTP_POST_TIMEOUT = 20000;
     private static final int HTTP_RESPONSE_TIMEOUT = 200000;
 
     private static final String API_GOOGLE_PLACES_URL = "https://maps.googleapis.com/maps/api/place";
     private static final String API_GOOGLE_DISTANCE_MATRIX_URL = "https://maps.googleapis.com/maps/api/distancematrix";
+    private static final String API_GOOGLE_DIRECTIONS_URL = "https://maps.googleapis.com/maps/api/directions";
     private static final String API_MA3MAP_URI_GET_ROUTES = "/get/routes";
     private static final String API_MA3MAP_URI_SEARCH = "/search";
+
+    public static final String DIRECTIONS_WALKING = "walking";
+    public static final String DIRECTIONS_DRIVING = "driving";
 
     private List<ProgressListener> progressListeners;
     private final Context context;
@@ -275,6 +281,24 @@ public class Data {
             finalizeProgressListeners(output, "Done getting cached route data", ProgressListener.FLAG_DONE);
         }
         return routes;
+    }
+
+    /**
+     * This method gets cached points that a linked to a line
+     *
+     * @return  An ArrayList of all Points linked to a line ordered by their sequence numbers
+     */
+    public ArrayList<Point> getLinePoints(String pointID){
+        ArrayList<Point> points = new ArrayList<Point>();
+        Database database = new Database(context);
+        SQLiteDatabase readableDB = database.getReadableDatabase();
+
+        String[][] pointRows = database.runSelectQuery(readableDB, Database.TABLE_POINT, Point.ALL_COLUMNS, "line_id=?", new String[]{pointID}, null, null, "point_sequence", null);
+        for(int rowIndex = 0; rowIndex < pointRows.length; rowIndex++){
+            Point currPoint = new Point(pointRows[rowIndex]);
+            points.add(currPoint);
+        }
+        return points;
     }
 
     /**
@@ -502,6 +526,61 @@ public class Data {
         }
 
         return -1;
+    }
+
+
+    /**
+     * This method retrieves map directions between the provided origin and destination according to
+     * Google Directions API. Refer to https://developers.google.com/maps/documentation/directions .
+     *
+     * @param mode          The mode of transportation. Use DIRECTIONS_WALKING or DIRECTIONS_DRIVING
+     * @param origin        The origin point
+     * @param destination   The destination
+     *
+     * @return  Object containing raw JSON output from API. Refer to API page. Returns null if something
+     *          goes wrong.
+     */
+    public org.json.JSONObject getDirections(String mode, LatLng origin, LatLng destination){
+        HttpURLConnection conn = null;
+        StringBuilder jsonResults = new StringBuilder();
+        try {
+            StringBuilder sb = new StringBuilder(API_GOOGLE_DIRECTIONS_URL + "/json");
+            sb.append("?mode="+mode);
+            sb.append("&origin="+String.valueOf(origin.latitude)+","+String.valueOf(origin.longitude));
+            sb.append("&destination="+String.valueOf(destination.latitude)+","+String.valueOf(destination.longitude));
+            sb.append("&units=metric");
+            sb.append("&key=" + context.getResources().getString(R.string.distance_matrix_api_key));
+
+            URL url = new URL(sb.toString());
+            conn = (HttpURLConnection) url.openConnection();
+            InputStreamReader in = new InputStreamReader(conn.getInputStream());
+
+            // Load the results into a StringBuilder
+            int read;
+            char[] buff = new char[1024];
+            while ((read = in.read(buff)) != -1) {
+                jsonResults.append(buff, 0, read);
+            }
+        } catch (MalformedURLException e) {
+            Log.e(TAG, "Error processing Distance Matrix API URL", e);
+        } catch (IOException e) {
+            Log.e(TAG, "Error connecting to Distance Matrix API", e);
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+
+        try {
+            // Create a JSON object hierarchy from the results
+            org.json.JSONObject jsonObj = new org.json.JSONObject(jsonResults.toString());
+            return jsonObj;
+
+        } catch (org.json.JSONException e) {
+            Log.e(TAG, "Cannot process JSON results", e);
+        }
+
+        return null;
     }
 
     /**

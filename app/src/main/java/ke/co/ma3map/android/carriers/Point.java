@@ -4,6 +4,8 @@ import android.database.sqlite.SQLiteDatabase;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.google.android.gms.maps.model.LatLng;
+
 import org.json.JSONException;
 
 import ke.co.ma3map.android.helpers.Database;
@@ -42,6 +44,13 @@ public class Point implements Parcelable{
         distTraveled = pointData.getInt("dist_traveled");
     }
 
+    /**
+     * Constructor when using data fetched from the database. Please use Point.ALL_COLUMNS when running
+     * query for fetching point from database. The sequence of the columns in Point.ALL_COLUMNS matches
+     * those expected in this constructor.
+     *
+     * @param columnValues
+     */
     public Point(String[] columnValues){
         //{"line_id", "point_lat", "point_lon", "point_sequence", "dist_traveled"};
         lat = columnValues[1];
@@ -55,6 +64,15 @@ public class Point implements Parcelable{
 
         database.runInsertQuery(Database.TABLE_POINT, ALL_COLUMNS, values, -1, writableDB);
     }
+
+    /**
+     * This method returns the LatLng corresponding to this point
+     * @return
+     */
+    public LatLng getLatLng(){
+        return new LatLng(Double.parseDouble(lat), Double.parseDouble(lon));
+    }
+
 
     @Override
     public int describeContents() {

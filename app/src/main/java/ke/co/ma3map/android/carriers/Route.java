@@ -1,9 +1,12 @@
 package ke.co.ma3map.android.carriers;
 
+import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.Log;
+
+import com.google.android.gms.maps.model.LatLng;
 
 import org.json.JSONException;
 
@@ -241,5 +244,32 @@ public class Route implements Parcelable {
                 this.lines.get(i).unloadPoints();
             }
         }
+    }
+
+    /**
+     * This method loads the points for each of the route's lines from the SQLite database
+     *
+     * @param context   The Context from where this method is called
+     */
+    public void loadPoints(Context context){
+        if(this.lines != null){
+            for(int i = 0; i < this.lines.size(); i++){
+                this.lines.get(i).loadPoints(context);
+            }
+        }
+    }
+
+    /**
+     * This method gets the GIS polyline corresponding to this route
+     *
+     * @return
+     */
+    public ArrayList<LatLng> getPolyline(){
+        ArrayList<LatLng> polyline = new ArrayList<LatLng>();
+        for(int lineIndex = 0; lineIndex < lines.size(); lineIndex++){
+            polyline.addAll(lines.get(lineIndex).getPolyline());
+        }
+
+        return polyline;
     }
 }
