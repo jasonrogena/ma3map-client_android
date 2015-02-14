@@ -230,7 +230,7 @@ public class Navigate extends IntentService
      * This method is called whenever the connection in the GoogleApiClient object is suspended.
      * The GoogleApiClient object is what is being used to obtain the user's location.
      *
-     * @param i
+     * @param cause
      */
     @Override
     public void onConnectionSuspended(int cause) {
@@ -239,26 +239,6 @@ public class Navigate extends IntentService
         }
         else if(cause == CAUSE_SERVICE_DISCONNECTED){
             Log.i(TAG, "GoogleApiClient suspended due to service disconnection");
-        }
-    }
-
-    /**
-     * This method is called whenever the user's location is updated on the GoogleApiClient object.
-     * The GoogleApiClient object is what is being used to obtain the user's location.
-     * Navigation in this service is updated whenever this method is called.
-     *
-     * @param location  The current user's location
-     */
-    @Override
-    public void onLocationChanged(Location location) {
-        Log.d(TAG, "*%*%*%*%*% User's location updated");
-        if(allGood){
-
-            //broadcast navigation update
-            broadcastNavigationStatus(STATUS_UPDATED);
-        }
-        else {
-            Log.d(TAG, "Service still not ready to start navigation");
         }
     }
 
@@ -291,6 +271,7 @@ public class Navigate extends IntentService
                     Log.e(TAG, "Commute segment representing walking in current commute step has an empty polyline");
                     return false;
                 }
+                commute.getSteps().get(stepIndex).setPolyline(currSegment.getPolyline());
                 segments.add(currSegment);
             }
             else if(currStep.getStepType() == Commute.Step.TYPE_MATATU){
@@ -324,15 +305,54 @@ public class Navigate extends IntentService
         return true;
     }
 
-    private void updateWalkingStatus(LatLng currLocation, Stop destination){
+    /**
+     * This method is called whenever the user's location is updated on the GoogleApiClient object.
+     * The GoogleApiClient object is what is being used to obtain the user's location.
+     * Navigation in this service is updated whenever this method is called.
+     *
+     * @param location  The current user's location
+     */
+    @Override
+    public void onLocationChanged(Location location) {
+        Log.d(TAG, "*%*%*%*%*% User's location updated");
+        if(allGood){
+            //broadcast navigation update
+            broadcastNavigationStatus(STATUS_UPDATED);
+            //if user is walking to the first stop or user is walking from one stop to the next step
+            if(currCommuteStep == -1 || (currCommuteStep < commute.getSteps().size() && commute.getStep(currCommuteStep).getStepType() == Commute.Step.TYPE_WALKING)){
+                Stop destStop = commute.getStep(0).getStart();
+                if(currCommuteStep != -1){
+                    destStop = commute.getStep(currCommuteStep).getStart();
+                }
+                updateWalkingStatus(location, destStop);
+            }
+            else if(currCommuteStep < commute.getSteps().size()) {//current step is an in-matatu step
+                updateInMatatuStatus(location, commute.getStep(currCommuteStep).getDestination());
+            }
+            else {//last step of the commute. User has just alighted the last matatu and is walking from last stop to destination
+                updateWalkingStatus(location, commute.getTo());
+            }
+        }
+        else {
+            Log.d(TAG, "Service still not ready to start navigation");
+        }
+    }
+
+    /**
+     * Means that user is walking from either the start point or from a stop to another stop
+     *
+     * @param currLocation
+     * @param destination
+     */
+    private void updateWalkingStatus(Location currLocation, Stop destination){
+        //check whether
+    }
+
+    private void updateWalkingStatus(Location currLocation, LatLng destination){
 
     }
 
-    private void updateWalkingStatus(LatLng currLocation, LatLng destination){
-
-    }
-
-    private void updateInMatatuStatus(){
+    private void updateInMatatuStatus(Location currLocation, Stop destination){
 
     }
 

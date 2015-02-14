@@ -77,6 +77,12 @@ import ke.co.ma3map.android.listeners.ProgressListener;
 import ke.co.ma3map.android.services.GetRouteData;
 import ke.co.ma3map.android.services.Navigate;
 
+/**
+ * @author Jason Rogena <jasonrogena@gmail.com>
+ * @since 2014-09-12
+ *
+ * This class has UI code for the Map Activity
+ */
 public class Map extends Activity
                  implements GooglePlayServicesClient.ConnectionCallbacks,
                             GoogleApiClient.OnConnectionFailedListener,
@@ -85,7 +91,7 @@ public class Map extends Activity
                             View.OnClickListener,
                             GoogleMap.OnMapClickListener,
                             View.OnFocusChangeListener,
-                            Serializable{
+                            Serializable {
 
     private final String TAG = "ma3map.Map";
 
@@ -134,14 +140,14 @@ public class Map extends Activity
     private ArrayList<Polyline> mapPolylines;
     private ArrayList<Route> routes;
     /*
-    This broadcast receiver receivers broadcasts from the GetRouteData service.
-    Broadcast consists of route data from the service
+     This broadcast receiver receivers broadcasts from the GetRouteData service.
+     Broadcast consists of route data from the service
      */
     private BroadcastReceiver routeDataBroadcastReceiver;
 
     /*
-    This broadcast receiver receives broadcasts from the Navigation service.
-    Broadcasts contain navigation statuses and can either be STATUS_ERROR, STATUS_STARTING, STATUS_UPDATED or STATUS_FINISHED.
+     This broadcast receiver receives broadcasts from the Navigation service.
+     Broadcasts contain navigation statuses and can either be STATUS_ERROR, STATUS_STARTING, STATUS_UPDATED or STATUS_FINISHED.
      */
     private BroadcastReceiver navigationStatusBroadcastReceiver;
 
@@ -151,6 +157,12 @@ public class Map extends Activity
      */
     private BroadcastReceiver commuteSegmentBroadcastReceiver;
 
+    /**
+     * Called when the activity is created for the first time. Initialise all non hardware resources
+     * here.
+     * <p>
+     * @param savedInstanceState    Carries data from a previously destroyed instance of this activity
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -350,8 +362,9 @@ public class Map extends Activity
     }
 
     /**
-     * Make sure you initialize all hardware resources here because they will be
-     * released in onPause
+     * Called whenever the activity comes viewable to the user.
+     * <p>
+     * Make sure you initialise all hardware bound fields here and not in {@link #onCreate(android.os.Bundle)}
      */
     @Override
     protected void onResume() {
@@ -375,8 +388,9 @@ public class Map extends Activity
     }
 
     /**
-     * Release all hardware resources here and not onDestroy to avoid blocking the resources
-     * when not using them
+     * Called whenever this activity goes out of view from the user.
+     * <p>
+     * Release all hardware resource bound fields here and not in {@link #onDestroy()}
      */
     @Override
     protected void onPause(){
@@ -396,8 +410,9 @@ public class Map extends Activity
     }
 
     /**
-     * This method zooms in on the devices location.
-     * Should be run after resources initialized i.e. in onResume()
+     * Zooms in on the device's location in the map.
+     * <p>
+     * Should only be run after resources initialized in {@link #onResume()}
      */
     private void zoomInOnLocation(){
         //Location myLocation = locationClient.getLastLocation();
@@ -412,6 +427,13 @@ public class Map extends Activity
         }
     }
 
+    /**
+     * Called whenever {@link com.google.android.gms.common.GooglePlayServicesClient} connection is successful
+     * <p>
+     * @param bundle    Data provided to cilents by Google Play Services
+     *
+     * @see com.google.android.gms.common.GooglePlayServicesClient.ConnectionCallbacks
+     */
     @Override
     public void onConnected(Bundle bundle) {
         locationRequest = LocationRequest.create();
@@ -424,21 +446,50 @@ public class Map extends Activity
         zoomInOnLocation();
     }
 
+    /**
+     * Called whenever {@link com.google.android.gms.common.GooglePlayServicesClient} disconnects
+     * <p>
+     * @see com.google.android.gms.common.GooglePlayServicesClient.ConnectionCallbacks
+     */
     @Override
     public void onDisconnected() {
 
     }
 
+    /**
+     * Called when there's an error connecting the {@link #googleApiClient} to the registered service
+     * <p>
+     * @param connectionResult
+     *
+     * @see com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener
+     * @see com.google.android.gms.common.api.GoogleApiClient
+     */
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
 
     }
 
+    /**
+     * Called whenever the {@link #googleApiClient} is temporary disconnected
+     * <p>
+     * @param i The reason for the disconnection.
+     *          Can either be {@link com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks#CAUSE_NETWORK_LOST}
+     *          or {@link com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks#CAUSE_SERVICE_DISCONNECTED}
+     *
+     * @see com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks
+     */
     @Override
     public void onConnectionSuspended(int i) {
         Log.i(TAG, "GoogleApiClient connection has been suspend");
     }
 
+    /**
+     * Called when the location changes
+     * <p>
+     * @param location  The updated location
+     *
+     * @see com.google.android.gms.location.LocationListener
+     */
     @Override
     public void onLocationChanged(Location location) {
         boolean zoomIn = false;
@@ -453,10 +504,12 @@ public class Map extends Activity
     }
 
     /**
-     * This method redraws the polylines on the map. Polylines will have different colors depending
+     * Redraws the polylines on the map. Polylines will have different colors depending
      * on the type of commute segment they come from.
-     *
+     * <p>
      * @param commuteSegments   The Commute Segments holding the polylines.
+     *
+     * @see ke.co.ma3map.android.carriers.Commute.Segment
      */
     private void redrawMapPolylines(ArrayList<Commute.Segment> commuteSegments){
         if(googleMap != null) {
@@ -487,7 +540,7 @@ public class Map extends Activity
     }
 
     /**
-     * This method first asks for permission from the user before spawning a service
+     * Asks for permission from the user before spawning a service
      * that gets the route data
      */
     private void getRouteData(){
@@ -518,6 +571,14 @@ public class Map extends Activity
         }
     }
 
+    /**
+     * Called whenever a view that is registered with this {@link android.view.View.OnClickListener} is
+     * clicked
+     * <p>
+     * @param view  The clicked view
+     *
+     * @see android.view.View.OnClickListener
+     */
     @Override
     public void onClick(View view) {
         Log.d(TAG, "onclick called");
@@ -565,6 +626,9 @@ public class Map extends Activity
         }
     }
 
+    /**
+     * Expands the view in the activity where the user specifies the start and destination points
+     */
     private void expandInteractionLayout() {
         mode = MODE_NAVIGATE;
         googleMap.getUiSettings().setMyLocationButtonEnabled(false);
@@ -579,6 +643,9 @@ public class Map extends Activity
         animatorSet.start();
     }
 
+    /**
+     * Completely retracts the view where the user specifies the start and destination points
+     */
     private void collapseInteractionLayout(){
         mode = MODE_MAP;
         googleMap.getUiSettings().setMyLocationButtonEnabled(true);
@@ -594,6 +661,10 @@ public class Map extends Activity
         animatorSet.start();
     }
 
+    /**
+     * Retracts the view where the use specifies the start and destination points halfway so the user
+     * can drop pins corresponding to these points
+     */
     private void setDropPinMode(){
         mode = MODE_DROP_PIN;
         googleMap.getUiSettings().setMyLocationButtonEnabled(false);
@@ -612,11 +683,23 @@ public class Map extends Activity
         animatorSet.start();
     }
 
+    /**
+     * Calculates the window height available to this activity
+     * <p>
+     * @return  Available height in pixels
+     */
     private int getWindowHeight(){
         Log.i(TAG, "Window height = " + String.valueOf(this.getResources().getDisplayMetrics().heightPixels));
         return this.getResources().getDisplayMetrics().heightPixels;
     }
 
+    /**
+     * Called whenever the map in this activity is clicked
+     * <p>
+     * @param latLng    Location corresponding to the area on the map that has been clicked
+     *
+     * @see com.google.android.gms.maps.GoogleMap.OnMapClickListener
+     */
     @Override
     public void onMapClick(LatLng latLng) {
         if(mode == MODE_NAVIGATE){
@@ -659,7 +742,17 @@ public class Map extends Activity
         }
     }
 
-    private String dropPin(LatLng latLng, long pin, String name){
+    /**
+     * Drops pin on the map
+     * <p>
+     * @param latLng    Location on the map to drop the pin
+     * @param pin       The type of pin. Can either be {@link #PIN_FROM} or {@link #PIN_TO}
+     * @param name      The label to be given to the pin. Set to <code>null</code> if you want this
+     *                  method to get the name corresponding to the location
+     *
+     * @return  Name of the location where the pin is dropped or <code>null</code> if <code>name</code> is not null
+     */
+    private String dropPin(LatLng latLng, int pin, String name){
         String locationName = null;
         if(name == null) locationName = getLocationName(latLng);
 
@@ -681,6 +774,12 @@ public class Map extends Activity
         return locationName;
     }
 
+    /**
+     * Drops a from pin on the map. Use {@link #dropPin(com.google.android.gms.maps.model.LatLng, int, String)}
+     * instead of this.
+     * <p>
+     * @param latLng    Location to drop the pin on the map
+     */
     private void dropFromPin(LatLng latLng){
         float hue = BitmapDescriptorFactory.HUE_RED;
         if(fromMarker != null) fromMarker.remove();
@@ -690,6 +789,12 @@ public class Map extends Activity
                 .icon(BitmapDescriptorFactory.defaultMarker(hue)));
     }
 
+    /**
+     * Drops a to pin on the map. Use {@link #dropPin(com.google.android.gms.maps.model.LatLng, int, String)}
+     * instead of this.
+     * <p>
+     * @param latLng    Location to drop the pin on the map
+     */
     private void dropToPin(LatLng latLng){
         float hue = BitmapDescriptorFactory.HUE_GREEN;
         if(toMarker != null)toMarker.remove();
@@ -699,6 +804,14 @@ public class Map extends Activity
                 .icon(BitmapDescriptorFactory.defaultMarker(hue)));
     }
 
+    /**
+     * Called whenever a registered view come into or goes out of focus
+     * <p>
+     * @param view      The view coming into or going out of focus
+     * @param isFocused True if view is coming into focus and false otherwise
+     *
+     * @see android.view.View.OnFocusChangeListener
+     */
     @Override
     public void onFocusChange(View view, boolean isFocused) {
         if(view == fromACTV){
@@ -725,6 +838,11 @@ public class Map extends Activity
         }
     }
 
+    /**
+     *
+     * @param location
+     * @return
+     */
     private String getLocationName(LatLng location){
         Geocoder geocoder = new Geocoder(this, Locale.getDefault());
         try {

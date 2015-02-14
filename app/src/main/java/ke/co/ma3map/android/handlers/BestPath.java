@@ -19,21 +19,20 @@ import ke.co.ma3map.android.carriers.Stop;
 import ke.co.ma3map.android.listeners.ProgressListener;
 
 /**
- * Created by jason on 17th 11 Nov 2014.
+ * @author  Jason Rogena <jasonrogena@gmail.com>
+ * @since   2014-11-17
+ *
  * This Class is responsible for determining the best path between source and destination.
  *
- * ALGORITHM
- * =========
- *
- * Problem
- * -------
+ * <strong>ALGORITHM</strong>
+ * <p></p>
+ * <strong>Problem</strong>
  * 1. Given a set with source route stops S and a set with destinations route stops D, find paths
  *      between members of set S and set D in the least time possible.
  * 2. Order determined paths using predetermined path weights (not to be confused with edge weights
  *      explained in the next section).
- *
- * Solution
- * --------
+ * <p>
+ * <strong>Solution</strong>
  * The class Implements Batched Shortest Path Computation using Dijkstra's Algorithm.
  * Key elements in Dijkstra's Algorithm are nodes, edges/arcs and weights. In our case:
  *  - nodes: A section of a route, terminated on both ends by stops
@@ -44,29 +43,24 @@ import ke.co.ma3map.android.listeners.ProgressListener;
  *              terminating stop at A to terminating stop at B
  *  - path: A plot from one of the potential starting points in the graph to a potential finishing
  *              point in the graph
- *
- * Considerations
- * --------------
+ * <p>
+ * <strong>Considerations</strong>
  * 1. The possibility of getting more than one edge with the least weight from a node is very high.
  *  In this algorithm, all the edges with the least weights from a node are considered. It is therefore
  *  possible to create more than one paths from a node.
- *
- * Optimizations
- * -------------
+ * <p>
+ * <strong>Optimizations</strong>
  * 1. Path should have a maximum of MAX_NODES nodes
  * 2. Once the algorithm obtains MAX_COMMUTES paths, it terminates and does not continue traversing
  *      the graph
- *
- * Future work
- * -----------
+ * <p>
+ * <strong>Future work</strong>
  * Since the classic Djkstra's algorithm is considered a naive algorithm [2], we consider solving the
  * same problem using faster algorithms presented in [1, 2]
- *
- *
- * References
- * ----------
- * 1. D. Delling, A. Goldberg, and R. Werneck. Faster Batched Shortest Paths in Road Networks. [http://vesta.informatik.rwth-aachen.de/opus/volltexte/2011/3266/pdf/6.pdf] (Accessed 18th Jan 2015)
- * 2. R. Geisberger, et al. Advanced Route Planning in Transportation Networks. [http://algo2.iti.kit.edu/download/diss_geisberger.pdf] (Accessed 16th Jan 2015)
+ * <p>
+ * <strong>References</strong>
+ * @see <a href="https://dl.google.com/eclipse/plugin/4.4">1. D. Delling, A. Goldberg, and R. Werneck. Faster Batched Shortest Paths in Road Networks. (Accessed 18th Jan 2015)</a>
+ * @see <a href="http://algo2.iti.kit.edu/download/diss_geisberger.pdf">2. R. Geisberger, et al. Advanced Route Planning in Transportation Networks. (Accessed 16th Jan 2015)</a>
  */
 public class BestPath extends Data {
     private static final String TAG = "ma3map.BestPath";
@@ -97,8 +91,11 @@ public class BestPath extends Data {
     }
 
     /**
-     * This method returns a list of commutes starting with the best
-     * @return
+     * Initiates the process of getting a list of <code>Commutes</code> using the provided list
+     * of from and to <code>Stops</code>
+     * <p>
+     * @see ke.co.ma3map.android.carriers.Commute
+     * @see ke.co.ma3map.android.carriers.Stop
      */
     public void calculateCommutes(){
         final ArrayList<Commute> commutes = new ArrayList<Commute>();
@@ -111,6 +108,24 @@ public class BestPath extends Data {
         }
     }
 
+    /**
+     * Gets the next possible <code>routes</code> to be added to the provided <code>Commute</code>.
+     * <p>
+     * This method is recursive and will terminate when:
+     *  -   All possible <code>routes</code> have been considered
+     *  -   Number of <code>routes</code> in provided <code>commute</code> have surpassed {@link #MAX_NODES}
+     * <p>
+     * @param commute       Commute object carrying the current route path being constructed
+     * @param noGoRouteIDs  A list of IDs corresponding to routes that should not be considered as the
+     *                      next possible route. Use <code>route.getId()</code> to get a route's ID
+     *
+     * @return  A <code>Commute</code> object containing a complete path from a potential from <code>Stop</code>
+     *          to a potential to <code>Stop</code> or <code>null</code> if no path is found
+     *
+     * @see ke.co.ma3map.android.carriers.Commute
+     * @see ke.co.ma3map.android.carriers.Route
+     * @see ke.co.ma3map.android.carriers.Stop
+     */
     private Commute getBestCommute(Commute commute, List<String> noGoRouteIDs){
         ArrayList<Route> nodes = commute.getMatatuRoutes();
 
@@ -236,11 +251,14 @@ public class BestPath extends Data {
     }
 
     /**
-     * This method gets routes from the class' routes ArrayList that contain the provided stop
+     * Gets all <code>routes</code> in {@link #allCommutes} that contain the provided <code>stop</code>.
+     * <p>
+     * @param stop  The <code>stop</code> to be checked against all available <code>routes</code>
+     *              to this class
      *
-     * @param stop
-     *
-     * @return  An ArrayList with routes that contain the provided stop
+     * @return  An ArrayList with <code>routes</code> that contain the provided <code>stop</code>
+     * @see ke.co.ma3map.android.carriers.Route
+     * @see ke.co.ma3map.android.carriers.Stop
      */
     private ArrayList<Route> getRoutesWithStop(Stop stop){
         ArrayList<Route> stopRoutes = new ArrayList<Route>();
@@ -254,16 +272,39 @@ public class BestPath extends Data {
         return stopRoutes;
     }
 
+    /**
+     * @author Jason Rogena <jasonrogena@gmail.com>
+     *
+     * This class implements an asynchronous thread that tries to obtain a path from one <code>stop</code>
+     * considered as the 'from' point to one of the <code>stops</code> in {@link #to}
+     */
     private class BestPathTasker extends AsyncTask<Integer, Integer, ArrayList<Commute>>{
         private final int threadCount;
         private final Stop from;
 
+        /**
+         * Class constructor.
+         * <p>
+         * @param threadCount   The number of threads (in the thread pool) initialised to calculate
+         *                      route paths
+         * @param from          The <code>stop</code> from where to start determining the path
+         * @see ke.co.ma3map.android.carriers.Stop
+         */
         public BestPathTasker(int threadCount, Stop from){
             this.threadCount = threadCount;
             this.from = from;
         }
 
-
+        /**
+         * Code to be run asynchronously from parent thread. Among other things, potential routes from
+         * the provided {@link #from} <code>stop</code> are determined using {@link BestPath#getBestCommute(ke.co.ma3map.android.carriers.Commute, java.util.List)}
+         * <p>
+         * @param params    List of integers not really used anywhere. Set as anything
+         *
+         * @return  A list of <code>commutes</code> that all start from the provided {@link #from}
+         * @see ke.co.ma3map.android.carriers.Stop
+         * @see ke.co.ma3map.android.carriers.Commute
+         */
         @Override
         protected ArrayList<Commute> doInBackground(Integer... params) {
             final ArrayList<Commute> commutes = new ArrayList<Commute>();
@@ -295,6 +336,12 @@ public class BestPath extends Data {
             return commutes;
         }
 
+        /**
+         * Code to be executed after thread is done executing background tasks.
+         * <p>
+         * @param commutes  A list of potential routes from the initialised {@link #from} to any of the
+         *                  stops in {@link BestPath#to}
+         */
         @Override
         protected void onPostExecute(ArrayList<Commute> commutes) {
             super.onPostExecute(commutes);

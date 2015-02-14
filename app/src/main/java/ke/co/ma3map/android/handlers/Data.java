@@ -46,10 +46,15 @@ import ke.co.ma3map.android.helpers.JSONArray;
 import ke.co.ma3map.android.listeners.ProgressListener;
 
 /**
- * Created by jason on 21/09/14.
+ * @author Jason Rogena <jasonrogena@gmail.com>
+ * @since 2014-09-21
+ *
  * This class handles movement and storage of data in the app.
- * Most of the public methods in this class should be run from inside
- * an AsyncTask as they are might block the UI thread if not
+ * <p>
+ * Most of the public methods in this class should be called in a thread running asynchronously from
+ * the UI thread.
+ * <p>
+ * It's best practice not to share an instance of this class between multiple {@link android.content.Context}
  */
 public class Data {
     private static final String TAG = "ma3map.Data";
@@ -70,21 +75,64 @@ public class Data {
     private List<ProgressListener> progressListeners;
     private final Context context;
 
+    /**
+     * Class constructor.
+     * <p>
+     * @param context   <code>Context</code> from where this class has been initialised
+     */
     public Data(Context context) {
         this.context = context;
         progressListeners = new ArrayList<ProgressListener>();
     }
 
+    /**
+     * Adds a <code>ProgressListener</code> to the list of progress listeners that will be updated
+     * when an action performed by this class is updated.
+     * <p>
+     * Note that not all actions performed by this class update registered progress listeners
+     * <p>
+     * @param progressListener  The new <code>ProgressListener</code> to be added to the list of updated
+     *                          progress listeners
+     *
+     * @see ke.co.ma3map.android.listeners.ProgressListener
+     */
     public void addProgressListener(ProgressListener progressListener){
         progressListeners.add(progressListener);
     }
 
+    /**
+     * Updates all registered <code>ProgressListeners</code>
+     * <p>
+     * @param progress  Number not greater than <code>end</code> that indicates progress
+     *                  <code>progress/end</code> should indicate progress as a fraction
+     * @param end       Indicates the potential maximum value of <code>progress</code>
+     * @param message   String indicating the progress. Can be displayed to the user
+     * @param flag      Indicates the status of the task in question. Possible values are:
+     *                      - {@link ProgressListener#FLAG_DONE}
+     *                      - {@link ProgressListener#FLAG_WORKING}
+     *                      - {@link ProgressListener#FLAG_ERROR}
+     *
+     * @see ke.co.ma3map.android.listeners.ProgressListener
+     */
     protected void updateProgressListeners(int progress, int end, String message, int flag){
         for(int i = 0; i < progressListeners.size(); i++){
             progressListeners.get(i).onProgress(progress, end, message, flag);
         }
     }
 
+    /**
+     * Calls {@link ProgressListener#onDone(android.os.Bundle, String, int)} on all the registered
+     * progress listeners.
+     * <p>
+     * @param output    <code>Bundle</code> containing all packaged data
+     * @param message   String indicating finalisation of action. Can be displayed to the user
+     * @param flag      Indicates the status of the task in question. Possible values are:
+     *                      - {@link ProgressListener#FLAG_DONE}
+     *                      - {@link ProgressListener#FLAG_WORKING}
+     *                      - {@link ProgressListener#FLAG_ERROR}
+     *
+     * @see ke.co.ma3map.android.listeners.ProgressListener
+     */
     protected void finalizeProgressListeners(Bundle output, String message, int flag){
         for(int i = 0; i < progressListeners.size(); i++){
             progressListeners.get(i).onDone(output, message, flag);
@@ -92,10 +140,11 @@ public class Data {
     }
 
     /**
-     * This method checks whether the application can access the internet
+     * Checks whether the application can access the internet.
+     * <p>
+     * @param context   The activity/service from where you are doing the check
      *
-     * @param context The activity/service from where you want to check for the connection
-     * @return True if the application can connect to the internet and False if not
+     * @return  <code>true</code> if the application can connect to the internet and <code>false</code> if not
      */
     public static boolean checkNetworkConnection(Context context) {
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -108,16 +157,21 @@ public class Data {
     }
 
     /**
-     * This method gets data from the server using a get request.
-     * Make sure you call this method from a thread running asynchronously from the UI thread
-     *
+     * Gets data from any of the ma3map APIs using a GET request.
+     * <p>
+     * This method updates all registered <code>ProgressListeners</code>
+     * Make sure you call this method from a thread running asynchronously from the UI thread.
+     * <p>
      * @param uri                   From where in the server you want to get the data from use the URI_* constants in this Class
      * @param data                  The data as a json object
      * @param willProgressContinue  If set to true, this method will send a signal to onProgress on all the registered ProgressListeners instead of onDone
      * @param bundleKey             The key to be used to bundle the data in the progress listeners
      *
-     * @return Returns a jsonObject with that looks like this {data, error, message}.
-     * Error stores a boolean (True if an error occured). Message being present doesn't mean an error occurred
+     * @return  JSONArray with the data from the accessed API.
+     *
+     * @see ke.co.ma3map.android.listeners.ProgressListener
+     * @see ke.co.ma3map.android.helpers.JSONObject
+     * @see ke.co.ma3map.android.helpers.JSONArray
      */
     public JSONArray getDataFromServer(String uri, JSONObject data, boolean willProgressContinue, String bundleKey) {
         JSONArray serverData = new JSONArray();
@@ -197,12 +251,20 @@ public class Data {
     }
 
     /**
-     * This method caches the map data in the SQLite database
-     *
+     * Caches the map data in the SQLite database
+     * <p>
+     * This method updates all registered <code>ProgressListeners</code>
+     * Make sure you call this method from a thread running asynchronously from the UI thread.
+     * <p>
      * @param data                  Response gotten from the server
      * @param willProgressContinue  If set to true, this method will send a signal to onProgress on all the registered ProgressListeners instead of onDone
      * @param bundleKey             The key to be used to bundle the data in the progress listeners
-     * @return
+     *
+     * @return  A list of all caches <code>routes</code>
+     *
+     * @see ke.co.ma3map.android.listeners.ProgressListener
+     * @see ke.co.ma3map.android.helpers.JSONArray
+     * @see ke.co.ma3map.android.carriers.Route
      */
     private ArrayList<Route> cacheMapData(JSONArray data, boolean willProgressContinue, String bundleKey){
         int finalFlag = ProgressListener.FLAG_ERROR;
@@ -252,12 +314,18 @@ public class Data {
     }
 
     /**
-     * This method gets cached map data from the local SQLite database
-     *
+     * Gets cached map data from the local SQLite database.
+     * <p>
+     * This method updates all registered <code>ProgressListeners</code>
+     * Make sure you call this method from a thread running asynchronously from the UI thread.
+     * <p>
      * @param willProgressContinue  If set to true, this method will send a signal to onProgress on all the registered ProgressListeners instead of onDone
      * @param bundleKey             The key to be used to bundle the data in the progress listeners
      *
      * @return                      An array list of all the route data
+     *
+     * @see ke.co.ma3map.android.listeners.ProgressListener
+     * @see ke.co.ma3map.android.carriers.Route
      */
     public ArrayList<Route> getCachedRouteData(boolean willProgressContinue, String bundleKey, boolean light){
         Database database = new Database(context);
@@ -284,9 +352,16 @@ public class Data {
     }
 
     /**
-     * This method gets cached points that a linked to a line
-     *
+     * Gets cached points that a linked to a <code>line</code>.
+     * <p>
+     * This method updates all registered <code>ProgressListeners</code>
+     * Make sure you call this method from a thread running asynchronously from the UI thread.
+     * <p>
      * @return  An ArrayList of all Points linked to a line ordered by their sequence numbers
+     *
+     * @see ke.co.ma3map.android.listeners.ProgressListener
+     * @see ke.co.ma3map.android.carriers.Line
+     * @see ke.co.ma3map.android.carriers.Point
      */
     public ArrayList<Point> getLinePoints(String pointID){
         ArrayList<Point> points = new ArrayList<Point>();
@@ -297,15 +372,23 @@ public class Data {
         for(int rowIndex = 0; rowIndex < pointRows.length; rowIndex++){
             Point currPoint = new Point(pointRows[rowIndex]);
             points.add(currPoint);
+            updateProgressListeners(rowIndex+1, pointRows.length, "Getting cached route points", ProgressListener.FLAG_WORKING);
         }
+
+        Bundle output = new Bundle();
+        output.putParcelableArrayList(Point.PARCELABLE_KEY, points);
+
+        finalizeProgressListeners(output, "Done getting cached route points", ProgressListener.FLAG_DONE);
+
         return points;
     }
 
     /**
-     * This method pings the server and checks if it responds before the timeout
+     * Pings the server and checks if it responds before the timeout
+     * <p>
+     * @param timeout   Time in milliseconds before timing out
      *
-     * @param timeout
-     * @return
+     * @return  <code>true</code> if able to connect to the server and <code>false</code> if not
      */
     private static boolean isConnectedToServer(int timeout) {
         try {
@@ -321,8 +404,8 @@ public class Data {
     }
 
     /**
-     * This method coverts an inputStream into a string
-     *
+     * Coverts an inputStream into a string
+     * <p>
      * @param inputStream
      * @return
      */
@@ -348,14 +431,20 @@ public class Data {
     }
 
     /**
-     * This method downloads all route data from the server and caches them in the SQLite database
-     * Several methods called by this method will block the thread for a long time. This method should
-     * thus be called in a thread running asynchronously from the UI Thread
+     * Downloads all route data from the server and caches them in the SQLite database
+     * <p>
+     * This method updates all registered <code>ProgressListeners</code>
+     * Make sure you call this method from a thread running asynchronously from the UI thread.
+     * <p>
      *
-     * @param willProgressContinue If set to true, this method will send a signal to onProgress on all the registered ProgressListeners instead of onDone
-     * @param bundleKey The key to be used to bundle the data in the progress listeners
+     * @param willProgressContinue  If set to true, this method will send a signal to onProgress on
+     *                              all the registered ProgressListeners instead of onDone
+     * @param bundleKey             The key to be used to bundle the data in the progress listeners
      *
-     * @return
+     * @return  A list of all <code>routes</code> gotten from the server
+     *
+     * @see ke.co.ma3map.android.listeners.ProgressListener
+     * @see ke.co.ma3map.android.carriers.Route
      */
     public ArrayList<Route> getAllRouteData(boolean willProgressContinue, String bundleKey){
 
@@ -375,8 +464,9 @@ public class Data {
     }
 
     /**
-     * This method checks whether the route data is stored in the local SQLite database
-     * @return
+     * Checks whether the route data is currently cached in the local SQLite database.
+     * <p>
+     * @return  <code>true</code> if route data is cached and <code>false</code> if not
      */
     public boolean isRouteDataPresent(){
         Database database = new Database(context);
@@ -388,12 +478,18 @@ public class Data {
     }
 
     /**
-     * This method get's suggestions of places from Google's Places API using an initial string
-     * TODO:make this method not static and implement using ProgressListeners
+     * Gets suggestions of places from Google's Places API.
+     * TODO: make this method not static and implement using ProgressListeners
+     * <p>
+     * Make sure you call this method from a thread running asynchronously from the UI thread
+     * <p>
+     * @param context   <<code>Context</code> from where you are calling this method</code>
+     * @param input     String to be used as an input in the API
      *
-     * @param context
-     * @param input
-     * @return
+     * @return  A list of two element arrays containing the place ID and name of places returned from
+     *          the API
+     *
+     * @see <a href="https://developers.google.com/places/documentation/">Google Places API Documentation</a>
      */
     public static ArrayList<String[]> getPlaceSuggestions(Context context, String input) {
         ArrayList<String[]> resultList = null;
@@ -449,13 +545,17 @@ public class Data {
     }
 
     /**
-     * This method get's the driving distance in metres between two points using Google's Distance
-     * Matrix API. Refer to https://developers.google.com/maps/documentation/distancematrix
-     *
+     * Gets the driving distance in metres between two points using Google's Distance
+     * Matrix API.
+     * <p>
+     * Make sure you call this method from a thread running asynchronously from the UI thread
+     * <p>
      * @param pointA    The first point
      * @param pointB    The second point
      *
      * @return  The distance in metres between pointA and pointB
+     *
+     * @see <a href="https://developers.google.com/maps/documentation/distancematrix/">Google Distance Matrix API Documentation</a>
      */
     public double getDrivingDistance(LatLng pointA, LatLng pointB) {
         ArrayList<String[]> resultList = null;
@@ -530,15 +630,18 @@ public class Data {
 
 
     /**
-     * This method retrieves map directions between the provided origin and destination according to
-     * Google Directions API. Refer to https://developers.google.com/maps/documentation/directions .
-     *
+     * Retrieves map directions between the provided origin and destination according to
+     * Google Directions API.
+     * <p>
+     * Make sure you call this method from a thread running asynchronously from the UI thread
+     * <p>
      * @param mode          The mode of transportation. Use DIRECTIONS_WALKING or DIRECTIONS_DRIVING
      * @param origin        The origin point
      * @param destination   The destination
      *
      * @return  Object containing raw JSON output from API. Refer to API page. Returns null if something
      *          goes wrong.
+     * @see <a href="https://developers.google.com/maps/documentation/directions/">Google Directions API Documentation</a>
      */
     public org.json.JSONObject getDirections(String mode, LatLng origin, LatLng destination){
         Log.d(TAG, "About to get directions from " + String.valueOf(origin.latitude)+","+String.valueOf(origin.longitude) + " to " + String.valueOf(destination.latitude)+","+String.valueOf(destination.longitude));
@@ -585,11 +688,19 @@ public class Data {
     }
 
     /**
-     * This method gets a LatLng corresponding to a placeID using Google's Places API
+     * Gets the <code>LatLng</code> corresponding to a Google's Places API place ID
+     *
      * TODO:make this method not static and implement ProgressListeners
-     * @param context
-     * @param placeID
-     * @return
+     * <p>
+     * Make sure you call this method from a thread running asynchronously from the UI thread
+     * <p>
+     * @param context   Context from where you are calling this method
+     * @param placeID   Google Places API place ID
+     *
+     * @return  <code>LatLng</code> corresponding to the provided place ID or <code>null</code> if
+     *          nothing returned from the API
+     *
+     * @see <a href="https://developers.google.com/places/documentation/">Google Places API Documentation</a>
      */
     public static LatLng getPlaceLatLng(Context context, String placeID) {
         ArrayList<String[]> resultList = null;

@@ -317,12 +317,14 @@ public class Commute implements Parcelable {
         private Stop start;
         private Stop destination;//destination stop regardless of whether current step is walking or in a matatu
         private int stepType;
+        private ArrayList<LatLng> polyline;
 
         public Step(){
             route = null;
             start = null;
             destination = null;
             stepType = -1;
+            polyline = new ArrayList<LatLng>();
         }
 
         public Step(Parcel source){
@@ -335,6 +337,7 @@ public class Commute implements Parcelable {
             this.route = null;
             this.start = null;
             this.destination = null;
+            polyline = new ArrayList<LatLng>();
         }
 
         public Step(int stepType, Route route, Stop start, Stop destination){
@@ -342,6 +345,11 @@ public class Commute implements Parcelable {
             this.route = route;
             this.start = start;
             this.destination = destination;
+            polyline = new ArrayList<LatLng>();
+        }
+
+        public void setPolyline(ArrayList<LatLng> polyline){
+            this.polyline = polyline;
         }
 
         public int getStepType(){
@@ -371,6 +379,7 @@ public class Commute implements Parcelable {
             parcel.writeParcelable(destination, flag);//2
             parcel.writeParcelable(start, flag);//3
             parcel.writeParcelable(route, flag);//4
+            parcel.writeTypedList(polyline);//5
         }
 
         public void readFromParcel(Parcel in){
@@ -378,6 +387,7 @@ public class Commute implements Parcelable {
             destination = in.readParcelable(Stop.class.getClassLoader());//2
             start = in.readParcelable(Stop.class.getClassLoader());//3
             route = in.readParcelable(Route.class.getClassLoader());//4
+            in.readTypedList(polyline, LatLng.CREATOR);//5
         }
 
         /**
