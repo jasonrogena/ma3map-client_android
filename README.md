@@ -6,6 +6,8 @@ ma3map is a [matatu](http://en.wikipedia.org/wiki/Matatu) transit application fo
 
 The android client was made using [Android Studio](https://developer.android.com/sdk/installing/studio.html) and the [Gradle Build System](http://www.gradle.org/).
 
+![screenshot_1](https://raw.githubusercontent.com/ma3map/ma3map-client_android/master/screenshots/1.png) ![screenshot_2](https://raw.githubusercontent.com/ma3map/ma3map-client_android/master/screenshots/2.png) ![screenshot_3](https://raw.githubusercontent.com/ma3map/ma3map-client_android/master/screenshots/3.png) ![screenshot_4](https://raw.githubusercontent.com/ma3map/ma3map-client_android/master/screenshots/4.png) ![screenshot_5](https://raw.githubusercontent.com/ma3map/ma3map-client_android/master/screenshots/5.gif) ![screenshot_6](https://raw.githubusercontent.com/ma3map/ma3map-client_android/master/screenshots/6.png)
+
 ### Building the Project
 
 #### Environment
