@@ -964,6 +964,8 @@ public class Map extends Activity
         private ArrayList<LatLngPair> latLngPairs;
         private int distanceIndex;
         private ArrayList<Commute> commutes;
+        private long startTime;
+        private long endTime;
 
         public SearchRoutesTasker(RoutePoint from, RoutePoint to){
             this.from = new RoutePoint(from.getLatLng(), from.getName(), from.getSelectionMode(), from.getPlaceID());
@@ -1043,6 +1045,7 @@ public class Map extends Activity
                         Collections.sort(toStops, new Stop.DistanceComparator(to.getLatLng()));//stop closest to destination becomes first
 
                         //4. determine commutes using closest stops
+                        startTime = System.currentTimeMillis();
                         BestPath bestPath = new BestPath(Map.this, fromStops.subList(0, BestPath.MAX_FROM_POINTS), from.getLatLng(), toStops.subList(0, BestPath.MAX_TO_POINTS), to.getLatLng(), routes, Commute.PARCELABLE_KEY);
                         bestPath.addProgressListener(SearchRoutesTasker.this);
                         bestPath.calculateCommutes();
@@ -1101,6 +1104,7 @@ public class Map extends Activity
 
         @Override
         public void onDone(Bundle output, String message, int flag) {
+            endTime = System.currentTimeMillis();
             //update the from and to points on the map
             dropFromPin(from.getLatLng());
             dropToPin(to.getLatLng());
@@ -1135,7 +1139,9 @@ public class Map extends Activity
                     latLngPairs = commutes.get(commuteIndex).getStepLatLngPairs(latLngPairs);
                     Log.d(TAG, "------------------------------------------------------");
                 }
-
+                Log.d(TAG, "Time taken = "+String.valueOf(endTime - startTime)+"ms");
+                Log.d(TAG, " From "+String.valueOf(from.getLatLng().latitude)+","+String.valueOf(from.getLatLng().longitude));
+                Log.d(TAG, " To "+String.valueOf(to.getLatLng().latitude)+","+String.valueOf(to.getLatLng().longitude));
                 Log.d(TAG, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 
                 //use Google Distance Matrix API to calculate distances between the latLngPairs
