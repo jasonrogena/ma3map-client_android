@@ -51,12 +51,12 @@ public class Stop implements Parcelable{
     }
 
     public Stop(JSONObject stopData) throws JSONException{
-        id = stopData.getString("stop_id");
-        name = stopData.getString("stop_name");
-        code = stopData.getString("stop_code");
-        desc = stopData.getString("stop_desc");
-        lat = stopData.getString("stop_lat");
-        lon = stopData.getString("stop_lon");
+        id = stopData.getString("id");
+        name = stopData.getString("name");
+        code = stopData.getString("code");
+        desc = stopData.getString("desc");
+        lat = stopData.getString("lat");
+        lon = stopData.getString("lng");
         locationType = stopData.getInt("location_type");
         parentStation = stopData.getString("parent_station");
     }

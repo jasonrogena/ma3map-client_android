@@ -67,7 +67,7 @@ public class Data {
     private static final String API_GOOGLE_DISTANCE_MATRIX_URL = "https://maps.googleapis.com/maps/api/distancematrix";
     private static final String API_GOOGLE_DIRECTIONS_URL = "https://maps.googleapis.com/maps/api/directions";
     private static final String API_MA3MAP_URI_GET_ROUTES = "/get/routes";
-    private static final String API_MA3MAP_URI_SEARCH = "/search";
+    public static final String API_MA3MAP_URI_GET_PATHS = "/get/paths";
 
     public static final String DIRECTIONS_WALKING = "walking";
     public static final String DIRECTIONS_DRIVING = "driving";

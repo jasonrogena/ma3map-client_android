@@ -48,7 +48,7 @@ public class Line implements Parcelable {
     }
 
     public Line(JSONObject lineData) throws JSONException{
-        id = lineData.getString("line_id");
+        id = lineData.getString("id");
         directionID = lineData.getInt("direction_id");
 
         stops = new ArrayList<Stop>();
@@ -58,9 +58,10 @@ public class Line implements Parcelable {
         }
 
         points = new ArrayList<Point>();
-        JSONArray pointData = lineData.getJSONArray("points");
-        for(int pIndex = 0; pIndex < pointData.length(); pIndex++){
-            points.add(new Point(pointData.getJSONObject(pIndex)));
+        ArrayList<LatLng> rawPoints = new Polyline(lineData.getString("polyline")).getPoints();
+        for(int index = 0; index < rawPoints.size(); index++) {
+            Point currPoint = new Point(rawPoints.get(index), index);
+            points.add(currPoint);
         }
     }
 

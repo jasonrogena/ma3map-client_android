@@ -37,6 +37,13 @@ public class Point implements Parcelable{
         distTraveled = -1;
     }
 
+    public Point(LatLng latLng, int sequence) {
+        lat = String.valueOf(latLng.latitude);
+        lon = String.valueOf(latLng.longitude);
+        distTraveled = -1;
+        sequence = sequence;
+    }
+
     public Point(JSONObject pointData) throws JSONException{
         lat = pointData.getString("point_lat");
         lon = pointData.getString("point_lon");

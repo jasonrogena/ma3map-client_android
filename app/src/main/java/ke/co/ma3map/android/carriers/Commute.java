@@ -35,12 +35,46 @@ public class Commute implements Parcelable {
     private LatLng to;//actual point on map user want to go to
     private List<Step> steps;
     private double time;
+    private double score;
 
     public Commute(LatLng from, LatLng to){
         this.from = from;
         this.to = to;
         this.steps = new ArrayList<Step>();
         time = -1;
+        score = -1;
+    }
+
+    public Commute(ke.co.ma3map.android.helpers.JSONObject data, LatLng from, LatLng to) {
+        this(from, to);
+        try {
+            score = data.getDouble("score");
+            ke.co.ma3map.android.helpers.JSONArray rawSteps = data.getJSONArray("steps");
+            for(int index = 0; index < rawSteps.length(); index++) {
+                ke.co.ma3map.android.helpers.JSONObject currRawStep = rawSteps.getJSONObject(index);
+                Stop start = null;
+                if(currRawStep.getJSONObject("start").has("id")) {
+                    start = new Stop(currRawStep.getJSONObject("start"));
+                }
+                Stop destination = null;
+                if(currRawStep.getJSONObject("destination").has("id")) {
+                    destination = new Stop(currRawStep.getJSONObject("destination"));
+                }
+                if(currRawStep.getString("type").equals("matatu")) {
+                    Route route = new Route(currRawStep.getJSONObject("route"));
+                    Step currStep = new Step(Step.TYPE_MATATU, route, start, destination);
+                    steps.add(currStep);
+                }
+                else if(currRawStep.getString("type").equals("walking")) {
+                    if(start != null && destination != null) {
+                        Step currStep = new Step(Step.TYPE_WALKING, null, start, destination);
+                        steps.add(currStep);
+                    }
+                }
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
 
     /*public Commute(){
@@ -107,43 +141,7 @@ public class Commute implements Parcelable {
     }
 
     public double getScore(){
-        /*
-        1. number of steps (five points per step)
-        2. total number of stops in between (two points per stop)
-        3. total distance walked (one point per 10m)
-         */
-
-        double stepScore = SCORE_STEP * steps.size();
-        int noStops = 0;
-        double totalDistanceWalked = 0;
-
-        //get distances from actual from and to points
-        if(steps.get(0).getStepType() == Step.TYPE_MATATU){
-            if(steps.get(0).getStart() != null){
-                totalDistanceWalked = totalDistanceWalked + steps.get(0).getStart().getDistance(from);
-            }
-        }
-
-        if(steps.get(steps.size() - 1).getStepType() == Step.TYPE_MATATU){
-            if(steps.get(steps.size() - 1).getDestination() != null){
-                totalDistanceWalked = totalDistanceWalked + steps.get(steps.size() - 1).getDestination().getDistance(to);
-            }
-        }
-
-        for(int index = 0; index < steps.size(); index++){
-            if(steps.get(index).getStepType() == Step.TYPE_WALKING){
-                totalDistanceWalked = totalDistanceWalked + steps.get(index).getStart().getDistance(steps.get(index).getDestination().getLatLng());
-            }
-            else if(steps.get(index).getStepType() == Step.TYPE_MATATU){
-                noStops = noStops + steps.get(index).getRoute().getStops(0).size();
-            }
-        }
-        //double stopScore = noStops * SCORE_STOP;
-        double stopScore = 0;
-        //TODO: get the actual route stops in the commute routes and not just all the stops
-        double walkingScore = SCORE_WALKING * totalDistanceWalked;
-
-        return stepScore + stopScore + walkingScore;
+        return this.score;
     }
 
     public ArrayList<LatLngPair> getStepLatLngPairs(ArrayList<LatLngPair> currLatLngPairs){
@@ -442,7 +440,8 @@ public class Commute implements Parcelable {
                     if(routes.length() > 0){
                         String encodedPolyline = routes.getJSONObject(0).getJSONObject("overview_polyline").getString("points");
                         Log.d(TAG, "Encoded polyline = " + encodedPolyline);
-                        polyline = decodePolyline(encodedPolyline);
+
+                        polyline = new Polyline(encodedPolyline).getPoints();
                         Log.d(TAG, "Commute segment initialized using an encoded polyline. Polyline has "+polyline.size()+" points");
                     }
                     else {
@@ -463,50 +462,6 @@ public class Commute implements Parcelable {
         public Segment(Parcel source){
             this(new ArrayList<LatLng>(), -1);
             readFromParcel(source);
-        }
-
-        /**
-         * This method decodes polylines encoded using the algorithm described in
-         * https://developers.google.com/maps/documentation/utilities/polylinealgorithm
-         * Code obtained from https://github.com/googlemaps/android-maps-utils
-         *
-         * @param encodedPath   String representing an encoded polyline
-         * @return  A list of the decoded LatLngs representing the polyline
-         */
-        private ArrayList<LatLng> decodePolyline(final String encodedPath) {
-            int len = encodedPath.length();
-
-            // For speed we preallocate to an upper bound on the final length, then
-            // truncate the array before returning.
-            final ArrayList<LatLng> path = new ArrayList<LatLng>();
-            int index = 0;
-            int lat = 0;
-            int lng = 0;
-
-            while (index < len) {
-                int result = 1;
-                int shift = 0;
-                int b;
-                do {
-                    b = encodedPath.charAt(index++) - 63 - 1;
-                    result += b << shift;
-                    shift += 5;
-                } while (b >= 0x1f);
-                lat += (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
-
-                result = 1;
-                shift = 0;
-                do {
-                    b = encodedPath.charAt(index++) - 63 - 1;
-                    result += b << shift;
-                    shift += 5;
-                } while (b >= 0x1f);
-                lng += (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
-
-                path.add(new LatLng(lat * 1e-5, lng * 1e-5));
-            }
-
-            return path;
         }
 
         public ArrayList<LatLng> getPolyline() {

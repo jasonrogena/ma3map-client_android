@@ -52,4 +52,7 @@ public class JSONObject extends org.json.JSONObject implements Serializable {
     public JSONArray getJSONArray(String name) throws JSONException {
         return new JSONArray(super.getJSONArray(name).toString());
     }
+    public JSONObject getJSONObject(String name) throws JSONException {
+        return new JSONObject(super.getJSONObject(name).toString());
+    }
 }

@@ -56,14 +56,14 @@ public class Route implements Parcelable {
     }
 
     public Route(JSONObject routeData) throws JSONException{
-        shortName = routeData.getString("route_short_name");
-        longName = routeData.getString("route_long_name");
-        id = routeData.getString("route_id");
-        desc = routeData.getString("route_desc");
-        type = routeData.getInt("route_type");
-        url = routeData.getString("route_url");
-        color = routeData.getString("route_color");
-        textColor = routeData.getString("route_text_color");
+        shortName = routeData.getString("short_name");
+        longName = routeData.getString("long_name");
+        id = routeData.getString("id");
+        desc = routeData.getString("description");
+        type = routeData.getInt("type");
+        url = routeData.getString("url");
+        color = routeData.getString("color");
+        textColor = routeData.getString("text_color");
 
         lines = new ArrayList<Line>();
         JSONArray lineData = routeData.getJSONArray("lines");

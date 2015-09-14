@@ -57,6 +57,8 @@ import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.melnykov.fab.FloatingActionButton;
 
+import org.json.JSONException;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.text.NumberFormat;
@@ -73,6 +75,8 @@ import ke.co.ma3map.android.carriers.Stop;
 import ke.co.ma3map.android.handlers.BestPath;
 import ke.co.ma3map.android.handlers.Data;
 import ke.co.ma3map.android.helpers.CommuteRecyclerAdapter;
+import ke.co.ma3map.android.helpers.JSONArray;
+import ke.co.ma3map.android.helpers.JSONObject;
 import ke.co.ma3map.android.listeners.ProgressListener;
 import ke.co.ma3map.android.services.GetRouteData;
 import ke.co.ma3map.android.services.Navigate;
@@ -297,8 +301,8 @@ public class Map extends Activity
             interactionLL.addView(phantomET);
 
             //ask user for permission to get route data
-            DataStatusTasker dataStatusTasker = new DataStatusTasker();
-            dataStatusTasker.execute(0);
+            /*DataStatusTasker dataStatusTasker = new DataStatusTasker();
+            dataStatusTasker.execute(0);*/
 
         /*PlacesSearchSuggestionTasker fromPlacesSuggestions = new PlacesSearchSuggestionTasker(fromACTV);
         fromPlacesSuggestions.execute(0);
@@ -954,7 +958,7 @@ public class Map extends Activity
         }
     }
 
-    public class SearchRoutesTasker extends AsyncTask<Integer, Integer, Boolean>
+    public class SearchRoutesTasker extends AsyncTask<Integer, Integer, ArrayList<Commute>>
                                     implements ProgressListener{
 
         private ProgressDialog progressDialog;
@@ -990,7 +994,7 @@ public class Map extends Activity
         }
 
         @Override
-        protected Boolean doInBackground(Integer... integers) {
+        protected ArrayList<Commute> doInBackground(Integer... integers) {
             if(to != null && from != null){
                 if(to.getName().length() > 0 && from.getName().length() > 0){
                     //1. check if LatLng for to and from set and set if not
@@ -999,7 +1003,7 @@ public class Map extends Activity
                     }
                     else if(to.getSelectionMode() == RoutePoint.MODE_TYPED){
                         Log.e(TAG, "No locationID for to point found");
-                        return false;
+                        return null;
                     }
 
                     if(from.getSelectionMode() == RoutePoint.MODE_TYPED && from.getLatLng() == null && from.getPlaceID()!=null){
@@ -1007,118 +1011,49 @@ public class Map extends Activity
                     }
                     else if(from.getSelectionMode() == RoutePoint.MODE_TYPED) {
                         Log.e(TAG, "No locationID for from point found");
-                        return false;
+                        return null;
                     }
 
                     //2. get cached route data
-                    if(routes != null){
-                        //3. get closest stops
-                        Log.d(TAG, "Getting all stops");
-                        List<Stop> fromStops = new ArrayList<Stop>();
-                        List<Stop> toStops = new ArrayList<Stop>();
-
-                        for(int routeIndex = 0; routeIndex < routes.size(); routeIndex++){
-                            List<Stop> routeStops = routes.get(routeIndex).getStops(0);
-                            //Log.d(TAG, "Route has "+routeStops.size()+" stops");
-
-                            for(int rStopIndex = 0 ; rStopIndex < routeStops.size(); rStopIndex++){
-                                boolean isThere = false;
-                                //Log.d(TAG, "Comparing current stop in route with "+fromStops.size()+" other stops");
-                                for(int aStopIndex = 0; aStopIndex < fromStops.size(); aStopIndex++){
-                                    if(routeStops.get(rStopIndex).getLat().equals(fromStops.get(aStopIndex).getLat())
-                                            && routeStops.get(rStopIndex).getLon().equals(fromStops.get(aStopIndex).getLon())){
-                                        isThere = true;
-                                        break;
-                                    }
-                                }
-
-                                if(isThere == false){
-                                    fromStops.add(routeStops.get(rStopIndex));
-                                    toStops.add(routeStops.get(rStopIndex));
-                                }
-                            }
+                    Data dataHandler = new Data(Map.this);
+                    JSONObject query = new JSONObject();
+                    try {
+                        /*query.put("from", String.valueOf(from.getLatLng().latitude+","+from.getLatLng().longitude));
+                        query.put("to", String.valueOf(to.getLatLng().latitude+","+to.getLatLng().longitude));*/
+                        JSONArray serverData = dataHandler.getDataFromServer(Data.API_MA3MAP_URI_GET_PATHS+"?from="+String.valueOf(from.getLatLng().latitude+","+from.getLatLng().longitude)+"&to="+String.valueOf(to.getLatLng().latitude+","+to.getLatLng().longitude), query, false, null);
+                        ArrayList<Commute> commutes = new ArrayList<Commute>();
+                        for(int index = 0; index < serverData.length(); index++) {
+                            Commute currCommute = new Commute(serverData.getJSONObject(index), from.getLatLng(), to.getLatLng());
+                            commutes.add(currCommute);
                         }
-
-                        Log.d(TAG, "Number of stops = " + fromStops.size());
-
-                        Collections.sort(fromStops, new Stop.DistanceComparator(from.getLatLng()));//stop closest to from becomes first
-                        Collections.sort(toStops, new Stop.DistanceComparator(to.getLatLng()));//stop closest to destination becomes first
-
-                        //4. determine commutes using closest stops
-                        startTime = System.currentTimeMillis();
-                        BestPath bestPath = new BestPath(Map.this, fromStops.subList(0, BestPath.MAX_FROM_POINTS), from.getLatLng(), toStops.subList(0, BestPath.MAX_TO_POINTS), to.getLatLng(), routes, Commute.PARCELABLE_KEY);
-                        bestPath.addProgressListener(SearchRoutesTasker.this);
-                        bestPath.calculateCommutes();
-                        return true;
-                    }
-                    else {
-                        message = "Route data not available at the moment";
+                        return commutes;
+                    } catch (JSONException e) {
+                        e.printStackTrace();
                     }
                 }
             }
-            return false;
+            return null;
         }
 
         @Override
-        protected void onPostExecute(Boolean result) {
+        protected void onPostExecute(ArrayList<Commute> result) {
             super.onPostExecute(result);
-            if(result == null || result.booleanValue() == false){
+            commutes = result;
+            if(result == null){
                 Toast.makeText(Map.this, "Something went wrong. Try searching again", Toast.LENGTH_LONG).show();
-                finish();
             }
-        }
+            else {
+                endTime = System.currentTimeMillis();
+                //update the from and to points on the map
+                dropFromPin(from.getLatLng());
+                dropToPin(to.getLatLng());
 
-        private void finish(){
-            progressDialog.dismiss();
-            from = null;
-            to = null;
-        }
+                progressDialog.setProgress(1);
+                progressDialog.setMax(1);
+                progressDialog.setIndeterminate(true);
+                progressDialog.setMessage("Sorting calculated commute paths");
 
-        private void setCommuteTimes(){
-            /*for(int index = 0; index < latLngPairs.size(); index++){
-                Log.d(TAG, "---------------------------------------");
-                Log.d(TAG, " Point A "+latLngPairs.get(index).getPointA());
-                Log.d(TAG, " Point B "+latLngPairs.get(index).getPointB());
-                Log.d(TAG, " Distance "+latLngPairs.get(index).getDistance());
-                Log.d(TAG, "---------------------------------------");
-            }*/
-            for(int cIndex = 0; cIndex < commutes.size(); cIndex++){
-                commutes.get(cIndex).setCommuteTime(latLngPairs);
-            }
-        }
-
-        /**
-         * This method adds commutes in the Commute Recycler View
-         */
-        public void showCommutes(){
-            CommuteRecyclerAdapter recyclerAdapter = new CommuteRecyclerAdapter(Map.this, commutes);
-            commutesRV.setAdapter(recyclerAdapter);
-        }
-
-        @Override
-        public void onProgress(int progress, int end, String message, int flag) {
-            progressDialog.setProgress(progress);
-            progressDialog.setMax(end);
-            progressDialog.setMessage(message);
-        }
-
-        @Override
-        public void onDone(Bundle output, String message, int flag) {
-            endTime = System.currentTimeMillis();
-            //update the from and to points on the map
-            dropFromPin(from.getLatLng());
-            dropToPin(to.getLatLng());
-
-            commutes = output.getParcelableArrayList(Commute.PARCELABLE_KEY);
-            progressDialog.setProgress(1);
-            progressDialog.setMax(1);
-            progressDialog.setIndeterminate(true);
-            progressDialog.setMessage("Sorting calculated commute paths");
-
-            Collections.sort(commutes, new Commute.ScoreComparator());
-
-            if(commutes != null && flag == ProgressListener.FLAG_DONE){
-
+                Collections.sort(commutes, new Commute.ScoreComparator());
                 Log.d(TAG, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
                 for(int commuteIndex = 0; commuteIndex < commutes.size(); commuteIndex++){
                     Log.d(TAG, "Commute with index as "+commuteIndex+" has score of "+commutes.get(commuteIndex).getScore());
@@ -1161,6 +1096,46 @@ public class Map extends Activity
                     Toast.makeText(Map.this, message, Toast.LENGTH_LONG).show();
                 }
             }
+            finish();
+        }
+
+        private void finish(){
+            progressDialog.dismiss();
+            from = null;
+            to = null;
+        }
+
+        private void setCommuteTimes(){
+            /*for(int index = 0; index < latLngPairs.size(); index++){
+                Log.d(TAG, "---------------------------------------");
+                Log.d(TAG, " Point A "+latLngPairs.get(index).getPointA());
+                Log.d(TAG, " Point B "+latLngPairs.get(index).getPointB());
+                Log.d(TAG, " Distance "+latLngPairs.get(index).getDistance());
+                Log.d(TAG, "---------------------------------------");
+            }*/
+            for(int cIndex = 0; cIndex < commutes.size(); cIndex++){
+                commutes.get(cIndex).setCommuteTime(latLngPairs);
+            }
+        }
+
+        /**
+         * This method adds commutes in the Commute Recycler View
+         */
+        public void showCommutes(){
+            CommuteRecyclerAdapter recyclerAdapter = new CommuteRecyclerAdapter(Map.this, commutes);
+            commutesRV.setAdapter(recyclerAdapter);
+        }
+
+        @Override
+        public void onProgress(int progress, int end, String message, int flag) {
+            progressDialog.setProgress(progress);
+            progressDialog.setMax(end);
+            progressDialog.setMessage(message);
+        }
+
+        @Override
+        public void onDone(Bundle output, String message, int flag) {
+
         }
 
         /**
@@ -1203,6 +1178,10 @@ public class Map extends Activity
         }
     }
 
+    /**
+     * This asynctask checks whether route data has already been cached in the local SQLite database.
+     * If this data has not yet been cached, the async task starts this process
+     */
     private class DataStatusTasker extends AsyncTask<Integer, Integer, Boolean>{
         @Override
         protected void onPreExecute() {
